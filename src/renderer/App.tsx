@@ -44,6 +44,7 @@ const Hello = () => {
 
   useIpcListener('update-image', () => {
     console.log('update-image-triggered');
+    loadImages();
   });
 
   useEffect(() => {
@@ -77,6 +78,9 @@ const Hello = () => {
       'get-images'
     )) as any;
 
+    console.log(response);
+
+    setActiveIndex(0);
     setImages(response);
   };
 

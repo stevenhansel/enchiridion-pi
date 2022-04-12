@@ -153,18 +153,13 @@ app.on('ready', async () => {
     __dirname,
     '../../assets/services/server/build/index.js'
   );
-
-  const child_server = fork(serverPath, [app.getPath('userData')]);
+  const imagesPath = path.join(app.getPath('userData'), 'Images');
+  const child_server = fork(serverPath, [imagesPath]);
   child_server.on('message', (message) => {
     const m = message.toString();
-    console.log('m', m);
-    console.log('test');
-    console.log('mainWindow', mainWindow);
     if (m === 'success') {
       // TODO: notify ipc
-      //
       mainWindow?.webContents.send('update-image');
-      console.log('got in here, triggering!');
     }
   });
 });
