@@ -9,7 +9,8 @@
  * `./src/main.js` using webpack. This gives us some performance wins.
  */
 import path from 'path';
-import { app, BrowserWindow, shell, ipcMain } from 'electron';
+import glob from 'glob';
+import { app, BrowserWindow, protocol, shell, ipcMain } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
 import MenuBuilder from './menu';
@@ -29,6 +30,19 @@ ipcMain.on('ipc-example', async (event, arg) => {
   const msgTemplate = (pingPong: string) => `IPC test: ${pingPong}`;
   console.log(msgTemplate(arg));
   event.reply('ipc-example', msgTemplate('pong'));
+});
+
+ipcMain.handle('get-user-path', async (event) => {
+  const path = app.getPath('userData');
+
+  return path;
+})
+
+ipcMain.handle('get-images', (event) => {
+  const imagesPath = path.join(app.getPath('userData'), 'Images');
+  const images = glob.sync(`${imagesPath}/*`);
+
+  return images
 });
 
 if (process.env.NODE_ENV === 'production') {
@@ -60,6 +74,8 @@ const createWindow = async () => {
   if (isDevelopment) {
     await installExtensions();
   }
+
+  // execFile(`${app.getPath('userData')}/enchridion-consumer`, (err, stdout, stderr) => console.log('stdout', stdout));
 
   const RESOURCES_PATH = app.isPackaged
     ? path.join(process.resourcesPath, 'assets')
@@ -115,6 +131,21 @@ const createWindow = async () => {
 /**
  * Add event listeners...
  */
+
+app.on('ready', async () => {
+   const protocolName = 'enchridion'
+
+  protocol.registerFileProtocol(protocolName, (request, callback) => {
+    const url = request.url.replace(`${protocolName}://`, '')
+    try {
+      return callback(decodeURIComponent(url))
+    }
+    catch (error) {
+      // Handle the error as needed
+      console.error(error)
+    }
+  })
+})
 
 app.on('window-all-closed', () => {
   // Respect the OSX convention of having the application in memory even
