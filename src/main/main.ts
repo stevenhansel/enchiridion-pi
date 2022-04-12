@@ -32,13 +32,13 @@ ipcMain.on('ipc-example', async (event, arg) => {
   event.reply('ipc-example', msgTemplate('pong'));
 });
 
-ipcMain.handle('get-user-path', async (event) => {
+ipcMain.handle('get-user-path', async () => {
   const path = app.getPath('userData');
 
   return path;
 })
 
-ipcMain.handle('get-images', (event) => {
+ipcMain.handle('get-images', () => {
   const imagesPath = path.join(app.getPath('userData'), 'Images');
   const images = glob.sync(`${imagesPath}/*`);
 
@@ -132,6 +132,8 @@ const createWindow = async () => {
  * Add event listeners...
  */
 
+
+// TODO: organize this file, organize the event listeners, because it's so fucking messy
 app.on('ready', async () => {
    const protocolName = 'enchridion'
 
