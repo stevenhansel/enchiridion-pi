@@ -51,7 +51,17 @@ fastify.post('/images', async (req) => {
     }
   }
 
-  return { status: errors.length > 0 ? false : true };
+  if (errors.length > 0) {
+    return { status: false };
+  }
+
+  if (typeof process.send === 'function') {
+    console.log('got in here');
+    process.send('success');
+  }
+
+  console.log('success');
+  return { status: true };
 });
 
 const main = async () => {

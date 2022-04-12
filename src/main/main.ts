@@ -10,6 +10,7 @@
  */
 import path from 'path';
 import glob from 'glob';
+import { fork } from 'child_process';
 import { app, BrowserWindow, protocol, shell, ipcMain } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
@@ -36,13 +37,13 @@ ipcMain.handle('get-user-path', async () => {
   const path = app.getPath('userData');
 
   return path;
-})
+});
 
 ipcMain.handle('get-images', () => {
   const imagesPath = path.join(app.getPath('userData'), 'Images');
   const images = glob.sync(`${imagesPath}/*`);
 
-  return images
+  return images;
 });
 
 if (process.env.NODE_ENV === 'production') {
@@ -132,22 +133,41 @@ const createWindow = async () => {
  * Add event listeners...
  */
 
-
 // TODO: organize this file, organize the event listeners, because it's so fucking messy
 app.on('ready', async () => {
-   const protocolName = 'enchridion'
+  const protocolName = 'enchridion';
 
   protocol.registerFileProtocol(protocolName, (request, callback) => {
-    const url = request.url.replace(`${protocolName}://`, '')
+    const url = request.url.replace(`${protocolName}://`, '');
     try {
-      return callback(decodeURIComponent(url))
-    }
-    catch (error) {
+      return callback(decodeURIComponent(url));
+    } catch (error) {
       // Handle the error as needed
-      console.error(error)
+      console.error(error);
     }
-  })
-})
+  });
+
+  // TODO:refactoring code
+  // TODO: check if port 8080, is already taken, if already is don't spawn child process
+  const serverPath = path.join(
+    __dirname,
+    '../../assets/services/server/build/index.js'
+  );
+
+  const child_server = fork(serverPath, [app.getPath('userData')]);
+  child_server.on('message', (message) => {
+    const m = message.toString();
+    console.log('m', m);
+    console.log('test');
+    console.log('mainWindow', mainWindow);
+    if (m === 'success') {
+      // TODO: notify ipc
+      //
+      mainWindow?.webContents.send('update-image');
+      console.log('got in here, triggering!');
+    }
+  });
+});
 
 app.on('window-all-closed', () => {
   // Respect the OSX convention of having the application in memory even

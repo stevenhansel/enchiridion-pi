@@ -85,7 +85,15 @@ fastify.post('/images', function (req) { return __awaiter(void 0, void 0, void 0
                         fastify.log.error(errors);
                     }
                 }
-                return [2 /*return*/, { status: errors.length > 0 ? false : true }];
+                if (errors.length > 0) {
+                    return [2 /*return*/, { status: false }];
+                }
+                if (typeof process.send === 'function') {
+                    console.log('got in here');
+                    process.send('success');
+                }
+                console.log('success');
+                return [2 /*return*/, { status: true }];
         }
     });
 }); });
