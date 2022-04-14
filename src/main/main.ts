@@ -10,7 +10,7 @@
  */
 import path from 'path';
 import glob from 'glob';
-import { fork } from 'child_process';
+import { spawn } from 'child_process';
 import { app, BrowserWindow, protocol, shell, ipcMain } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
@@ -149,19 +149,29 @@ app.on('ready', async () => {
 
   // TODO:refactoring code
   // TODO: check if port 8080, is already taken, if already is don't spawn child process
-  const serverPath = path.join(
-    __dirname,
-    '../../assets/services/server/build/index.js'
-  );
   const imagesPath = path.join(app.getPath('userData'), 'Images');
-  const child_server = fork(serverPath, [imagesPath]);
-  child_server.on('message', (message) => {
-    const m = message.toString();
-    if (m === 'success') {
-      // TODO: notify ipc
-      mainWindow?.webContents.send('update-image');
-    }
-  });
+  console.log('imagesPath: ', imagesPath)
+
+  const consumerPath = path.join(
+    __dirname,
+    '../../assets/services/consumer/bin/main'
+  );
+
+  try {
+    const child_server = spawn(consumerPath, [`-path`, `${imagesPath}`], {
+      stdio: [0, 1, 2, 'ipc'],
+    });
+    child_server.on('message', (message) => {
+      const msg = message as any;
+      console.log('message', msg)
+
+      if (msg.status === "success"){
+        mainWindow?.webContents.send('update-image');
+      }
+    });
+  } catch (err) {
+    console.error(err);
+  }
 });
 
 app.on('window-all-closed', () => {

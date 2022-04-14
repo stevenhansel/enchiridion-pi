@@ -3,25 +3,10 @@ import axios from 'axios';
 import fs from 'fs';
 import path, { ParsedPath } from 'path';
 
-const PORT = 8080;
+const PORT = 8081;
 let IMAGE_DIRECTORY: ParsedPath;
 
 const fastify = Fastify({ logger: true });
-
-const downloadImage = async (
-  url: string,
-  imagePath: string
-): Promise<boolean | Error> => {
-  return axios({ url, responseType: 'stream' }).then(
-    (response) =>
-      new Promise((resolve, reject) => {
-        response.data
-          .pipe(fs.createWriteStream(imagePath))
-          .on('finish', () => resolve(true))
-          .on('error', (err: Error) => reject(err));
-      })
-  );
-};
 
 /**
  * POST /images
