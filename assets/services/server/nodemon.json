@@ -1,6 +1,0 @@
-{
-  "watch": ["src"],
-  "ext": ".ts,.js",
-  "ignore": [],
-  "exec": "ts-node ./src/index.ts /Users/shinteimai/Library/Application\\ Support/Electron/Images"
-}
