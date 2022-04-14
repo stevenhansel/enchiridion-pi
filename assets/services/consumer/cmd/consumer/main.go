@@ -27,10 +27,18 @@ const (
 	shouldLog       = true
 )
 
+type SyncJobPayload struct {
+	Operation string `json:"operation"`
+	URL       string `json:"imageUrl"`
+	Filename  string `json:"filename"`
+}
+
+func getSyncQueueName(deviceID int) string {
+	return fmt.Sprintf("sync-device-%d", deviceID)
+}
+
 // TODO: refactor the consumer function (this is from example)
 func main() {
-	fmt.Println("all os args: ", os.Args)
-
 	channel, err := go2node.RunAsNodeChild()
 	if err != nil {
 		fmt.Fprintf(os.Stdout, "err: failed to run as node child %v", err)
@@ -45,8 +53,6 @@ func main() {
 	flag.StringVar(&localImagePath, "path", "", "")
 
 	flag.Parse()
-
-	fmt.Println("in go localImagePath: ", localImagePath)
 
 	if localImagePath == "" {
 		fmt.Fprintf(os.Stdout, "err: local image path is empty")
@@ -63,7 +69,8 @@ func main() {
 
 	fmt.Println("starting...")
 
-	queue, err := connection.OpenQueue("device")
+	// TODO: Sync Queue Name should be from flag parameter
+	queue, err := connection.OpenQueue(getSyncQueueName(1))
 	if err != nil {
 		panic(err)
 	}
@@ -100,11 +107,6 @@ type Consumer struct {
 	channel        go2node.NodeChannel
 }
 
-type UploadMediaPayload struct {
-	URL      string `json:"imageUrl"`
-	Filename string `json:"filename"`
-}
-
 func NewConsumer(tag int, path string, channel go2node.NodeChannel) *Consumer {
 	return &Consumer{
 		name:           fmt.Sprintf("consumer%d", tag),
@@ -119,17 +121,25 @@ func (consumer *Consumer) Consume(delivery rmq.Delivery) {
 	payload := delivery.Payload()
 	debugf("start consume %s", payload)
 
-	data := &UploadMediaPayload{}
+	data := &SyncJobPayload{}
 	err := json.Unmarshal([]byte(payload), data)
 	if err != nil {
 		debugf("unmarshalling failed")
 		rejectDelivery(delivery)
 	}
 
-	err = consumer.processImage(data)
-	if err != nil {
-		debugf("processing image failed, err: %v", err)
-		rejectDelivery(delivery)
+	if data.Operation == "append" {
+		err = consumer.processImage(data)
+		if err != nil {
+			debugf("processing image failed, err: %v", err)
+			rejectDelivery(delivery)
+		}
+	} else if data.Operation == "delete" {
+		err = consumer.deleteImage(data)
+		if err != nil {
+			debugf("deleting image failed, err: %v", err)
+			rejectDelivery(delivery)
+		}
 	}
 
 	consumer.count++
@@ -213,7 +223,7 @@ func (c *Consumer) downloadFile(url, filename string) error {
 	return nil
 }
 
-func (c *Consumer) processImage(data *UploadMediaPayload) error {
+func (c *Consumer) processImage(data *SyncJobPayload) error {
 	if err := c.downloadFile(data.URL, data.Filename); err != nil {
 		return err
 	}
@@ -221,5 +231,18 @@ func (c *Consumer) processImage(data *UploadMediaPayload) error {
 	c.channel.Write(&go2node.NodeMessage{
 		Message: []byte(`{"status":"success"}`),
 	})
+	return nil
+}
+
+func (c *Consumer) deleteImage(data *SyncJobPayload) error {
+	err := os.Remove(path.Join(c.localImagePath, data.Filename))
+	if err != nil {
+		return err
+	}
+
+	c.channel.Write(&go2node.NodeMessage{
+		Message: []byte(`{"status":"success"}`),
+	})
+
 	return nil
 }
