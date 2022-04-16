@@ -52,6 +52,9 @@ func main() {
 	var localImagePath string
 	flag.StringVar(&localImagePath, "path", "", "")
 
+	var redisQueueAddr string
+	flag.StringVar(&redisQueueAddr, "redis", "", "")
+
 	flag.Parse()
 
 	if localImagePath == "" {
@@ -59,10 +62,17 @@ func main() {
 		os.Exit(1)
 	}
 
+	if redisQueueAddr == "" {
+		fmt.Fprintf(os.Stdout, "err: redis queue addr is empty")
+		os.Exit(1)
+	}
+
+	fmt.Println("redis queue addr: ", redisQueueAddr)
+
 	errChan := make(chan error, 10)
 	go logErrors(errChan)
 
-	connection, err := rmq.OpenConnection("consumer", "tcp", "localhost:6379", 1, errChan)
+	connection, err := rmq.OpenConnection("consumer", "tcp", redisQueueAddr, 1, errChan)
 	if err != nil {
 		panic(err)
 	}

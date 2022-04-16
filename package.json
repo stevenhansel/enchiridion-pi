@@ -31,8 +31,8 @@
     ]
   },
   "build": {
-    "productName": "ElectronReact",
-    "appId": "org.erb.ElectronReact",
+    "productName": "Enchridion",
+    "appId": "org.erb.Enchridion",
     "asar": true,
     "asarUnpack": "**\\*.{node,dll}",
     "files": [
@@ -90,31 +90,20 @@
     ],
     "publish": {
       "provider": "github",
-      "owner": "electron-react-boilerplate",
-      "repo": "electron-react-boilerplate"
+      "owner": "stevenhansel",
+      "repo": "enchridion-pi"
     }
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/electron-react-boilerplate/electron-react-boilerplate.git"
+    "url": "git+https://github.com/stevenhansel/enchridion-pi.git"
   },
   "author": {
-    "name": "Electron React Boilerplate Maintainers",
-    "email": "electronreactboilerplate@gmail.com",
-    "url": "https://electron-react-boilerplate.js.org"
+    "name": "Steven Hansel",
+    "email": "stevenhanselgo@gmail.com",
+    "url": "https://stevenhansel.com"
   },
-  "contributors": [
-    {
-      "name": "Amila Welihinda",
-      "email": "amilajack@gmail.com",
-      "url": "https://github.com/amilajack"
-    },
-    {
-      "name": "John Tran",
-      "email": "jptran318@gmail.com",
-      "url": "https://github.com/jooohhn"
-    }
-  ],
+  "contributors": [],
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/electron-react-boilerplate/electron-react-boilerplate/issues"
@@ -229,6 +218,7 @@
     "webpack-merge": "^5.8.0"
   },
   "dependencies": {
+    "dotenv": "^16.0.0",
     "electron-debug": "^3.2.0",
     "electron-log": "^4.4.6",
     "electron-updater": "^4.6.5",

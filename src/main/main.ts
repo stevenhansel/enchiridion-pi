@@ -29,7 +29,6 @@ let mainWindow: BrowserWindow | null = null;
 
 ipcMain.on('ipc-example', async (event, arg) => {
   const msgTemplate = (pingPong: string) => `IPC test: ${pingPong}`;
-  console.log(msgTemplate(arg));
   event.reply('ipc-example', msgTemplate('pong'));
 });
 
@@ -75,8 +74,6 @@ const createWindow = async () => {
   if (isDevelopment) {
     await installExtensions();
   }
-
-  // execFile(`${app.getPath('userData')}/enchridion-consumer`, (err, stdout, stderr) => console.log('stdout', stdout));
 
   const RESOURCES_PATH = app.isPackaged
     ? path.join(process.resourcesPath, 'assets')
@@ -135,8 +132,9 @@ const createWindow = async () => {
 
 // TODO: organize this file, organize the event listeners, because it's so fucking messy
 app.on('ready', async () => {
-  const protocolName = 'enchridion';
+  console.log(`Redis Queue Addr: ${process.env.REDIS_QUEUE_ADDR}`);
 
+  const protocolName = 'enchridion';
   protocol.registerFileProtocol(protocolName, (request, callback) => {
     const url = request.url.replace(`${protocolName}://`, '');
     try {
@@ -150,7 +148,6 @@ app.on('ready', async () => {
   // TODO:refactoring code
   // TODO: check if port 8080, is already taken, if already is don't spawn child process
   const imagesPath = path.join(app.getPath('userData'), 'Images');
-  console.log('imagesPath: ', imagesPath)
 
   const consumerPath = path.join(
     __dirname,
@@ -158,14 +155,17 @@ app.on('ready', async () => {
   );
 
   try {
-    const child_server = spawn(consumerPath, [`-path`, `${imagesPath}`], {
-      stdio: [0, 1, 2, 'ipc'],
-    });
+    const child_server = spawn(
+      consumerPath,
+      [`-path`, `${imagesPath}`, `-redis`, `${process.env.REDIS_QUEUE_ADDR}`],
+      {
+        stdio: [0, 1, 2, 'ipc'],
+      }
+    );
     child_server.on('message', (message) => {
       const msg = message as any;
-      console.log('message', msg)
 
-      if (msg.status === "success"){
+      if (msg.status === 'success') {
         mainWindow?.webContents.send('update-image');
       }
     });
