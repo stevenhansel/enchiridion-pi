@@ -1,4 +1,7 @@
-use yew::{use_state, html, function_component, Callback, MouseEvent};
+use yew::{use_state, html, function_component, Callback, MouseEvent, use_effect_with_deps};
+
+mod hooks;
+pub use hooks::use_interval;
 
 fn main() {
     yew::start_app::<App>();
@@ -12,6 +15,7 @@ pub fn app() -> Html {
         "https://bm5cdn.azureedge.net/banner/20220428094623OSI1200113.jpg"
     ];
     let active_image_index = use_state(|| 0);
+    let millis = use_state(||0);
 
     let increment_active_image_index = {
         let active_image_index = active_image_index.clone();
@@ -34,6 +38,31 @@ pub fn app() -> Html {
 
         Callback::from(move |_: MouseEvent| active_image_index.set(updated_image_index))
     };
+
+
+    {
+        let millis = millis.clone();
+
+        use_effect_with_deps(move |_| {
+            millis.set(2000); || ()
+        }, ());
+    }
+
+
+    {
+        let active_image_index = active_image_index.clone();
+        let is_reached_end = *active_image_index == images.len() - 1;
+
+        use_interval(move || {
+            let updated_image_index = if is_reached_end {
+                0
+            } else {
+                *active_image_index + 1
+            };
+            
+            active_image_index.set(updated_image_index);
+        }, *millis);
+    }
 
     html! {
         <div>
