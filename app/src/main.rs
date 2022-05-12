@@ -1,9 +1,19 @@
 use yew::{use_state, html, function_component, Callback, MouseEvent, use_effect_with_deps};
+use wasm_bindgen::prelude::*;
+use wasm_bindgen_futures::spawn_local;
+use web_sys::window;
 
 mod hooks;
 pub use hooks::use_interval;
 
+#[wasm_bindgen(module = "/public/glue.js")]
+extern "C" {
+    #[wasm_bindgen(js_name = invokePing, catch)]
+    pub async fn ping(message: String) -> Result<JsValue, JsValue>;
+}
+
 fn main() {
+    wasm_logger::init(wasm_logger::Config::default());
     yew::start_app::<App>();
 }
 
@@ -38,7 +48,25 @@ pub fn app() -> Html {
 
         Callback::from(move |_: MouseEvent| active_image_index.set(updated_image_index))
     };
+    
+    fn call_tauri_ping() {
+        log::info!("calling the tauri");
+        let message = String::from("Hello from Yew");
+        spawn_local(async move {
+            match ping(message).await {
+                Ok(message) => {
+                    log::info!("{}", message.as_string().unwrap());
+                }
+                Err(e) => {
+                    log::info!("{}", e.as_string().unwrap());
+                }
+            }
+        })
+    }
 
+    let trigger_tauri_ping = {
+        Callback::from(move |_: MouseEvent| call_tauri_ping())
+    };
 
     {
         let millis = millis.clone();
@@ -47,7 +75,6 @@ pub fn app() -> Html {
             millis.set(2000); || ()
         }, ());
     }
-
 
     {
         let active_image_index = active_image_index.clone();
@@ -66,6 +93,7 @@ pub fn app() -> Html {
 
     html! {
         <div>
+            <button onclick={trigger_tauri_ping}>{"ping"}</button>
             <button onclick={increment_active_image_index}>{"increment"}</button>
             <button onclick={decrement_active_image_index}>{"decrement"}</button>
             <img src={images[*active_image_index]} />

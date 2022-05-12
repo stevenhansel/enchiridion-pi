@@ -5,6 +5,12 @@
 
 fn main() {
   tauri::Builder::default()
+    .invoke_handler(tauri::generate_handler![ping])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
+}
+
+#[tauri::command]
+fn ping(message: &str) -> Result<String, String> {
+    return Ok(format!("Pong"))
 }
