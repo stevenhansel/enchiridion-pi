@@ -1,4 +1,4 @@
-use yew::prelude::*;
+use yew::{use_state, html, function_component, Callback, MouseEvent};
 
 fn main() {
     yew::start_app::<App>();
@@ -6,9 +6,40 @@ fn main() {
 
 #[function_component(App)]
 pub fn app() -> Html {
+    let images = vec![
+        "https://bm5cdn.azureedge.net/banner/20220512142607OSI1200113.jpg",
+        "https://bm5cdn.azureedge.net/banner/20220512102929BN001153664.jpeg",
+        "https://bm5cdn.azureedge.net/banner/20220428094623OSI1200113.jpg"
+    ];
+    let active_image_index = use_state(|| 0);
+
+    let increment_active_image_index = {
+        let active_image_index = active_image_index.clone();
+        let updated_image_index = if *active_image_index == images.len() - 1 {
+            0
+        } else {
+            *active_image_index + 1
+        };
+
+        Callback::from(move |_: MouseEvent| active_image_index.set(updated_image_index))
+    };
+
+    let decrement_active_image_index  = {
+        let active_image_index = active_image_index.clone();
+        let updated_image_index = if *active_image_index == 0 {
+            images.len() - 1
+        } else {
+            *active_image_index - 1
+        };
+
+        Callback::from(move |_: MouseEvent| active_image_index.set(updated_image_index))
+    };
+
     html! {
         <div>
-            <h2 class={"heading"}>{"Hello, World!"}</h2>
+            <button onclick={increment_active_image_index}>{"increment"}</button>
+            <button onclick={decrement_active_image_index}>{"decrement"}</button>
+            <img src={images[*active_image_index]} />
         </div>
     }
 }
