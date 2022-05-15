@@ -1,7 +1,6 @@
 use yew::{use_state, html, function_component, Callback, MouseEvent, use_effect_with_deps};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::spawn_local;
-use web_sys::window;
 
 mod hooks;
 pub use hooks::use_interval;
