@@ -1,7 +1,5 @@
 const invoke = window.__TAURI__.invoke
 
-export async function invokePing(message) {
-  return await invoke("ping", { message });
+export async function getImages() {
+  return await invoke("get_images");
 }
-
-export async function invokeScanDirectory() {}
