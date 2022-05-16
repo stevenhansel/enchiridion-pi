@@ -1,6 +1,6 @@
-use yew::{use_state, html, function_component, Callback, MouseEvent, use_effect_with_deps, UseStateHandle};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::spawn_local;
+use yew::{function_component, html, use_effect_with_deps, use_state, UseStateHandle};
 
 mod hooks;
 pub use hooks::use_interval;
@@ -9,11 +9,6 @@ pub use hooks::use_interval;
 extern "C" {
     #[wasm_bindgen(js_name = getImages, catch)]
     pub async fn get_images() -> Result<JsValue, JsValue>;
-}
-
-struct Image {
-    index: usize,
-    url: String,
 }
 
 fn main() {
@@ -25,7 +20,7 @@ fn main() {
 pub fn app() -> Html {
     let images: UseStateHandle<Vec<String>> = use_state(|| vec!["".to_string()]);
     let active_image_index: UseStateHandle<usize> = use_state(|| 0);
-    let millis = use_state(||0);
+    let millis = use_state(|| 0);
 
     fn fetch_images(images: UseStateHandle<Vec<String>>) {
         spawn_local(async move {
@@ -47,32 +42,43 @@ pub fn app() -> Html {
 
     {
         let images = images.clone();
-        use_effect_with_deps(move |_| {
-            fetch_images(images); || ()
-        }, ());
+        use_effect_with_deps(
+            move |_| {
+                fetch_images(images);
+                || ()
+            },
+            (),
+        );
     }
 
     {
         let millis = millis.clone();
 
-        use_effect_with_deps(move |_| {
-            initialize_millis(millis); || ()
-        }, (*images).clone());
+        use_effect_with_deps(
+            move |_| {
+                initialize_millis(millis);
+                || ()
+            },
+            (*images).clone(),
+        );
     }
 
     {
         let active_image_index = active_image_index.clone();
         let is_reached_end = *active_image_index == images.len() - 1;
 
-        use_interval(move || {
-            let updated_image_index = if is_reached_end {
-                0
-            } else {
-                *active_image_index + 1
-            };
-            
-            active_image_index.set(updated_image_index);
-        }, *millis);
+        use_interval(
+            move || {
+                let updated_image_index = if is_reached_end {
+                    0
+                } else {
+                    *active_image_index + 1
+                };
+
+                active_image_index.set(updated_image_index);
+            },
+            *millis,
+        );
     }
 
     html! {
