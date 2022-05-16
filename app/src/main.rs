@@ -42,7 +42,7 @@ pub fn app() -> Html {
     }
 
     fn initialize_millis(millis: UseStateHandle<u32>) {
-        millis.set(2000);
+        millis.set(3000);
     }
 
     {
@@ -76,8 +76,12 @@ pub fn app() -> Html {
     }
 
     html! {
-        <div>
-            <img src={images.get(*active_image_index).unwrap().clone()} />
+        <div class="container">
+            <img class="image" src={images.get(*active_image_index).unwrap().clone()} />
+            <div class="contributor">
+                <p>{"Computer Engineering BINUS"}</p>
+                <p>{"Lukas Linardi, Steven Hansel"}</p>
+            </div>
         </div>
     }
 }
