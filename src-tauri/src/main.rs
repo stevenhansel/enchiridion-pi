@@ -46,7 +46,7 @@ fn get_images() -> Result<Vec<String>, String> {
                 e
                 .path()
                 .to_str()
-                .map(|s| ["asset://", s].concat())
+                .map(|s| ["asset:///", s].concat())
           )
         })
         .collect::<Vec<String>>();
