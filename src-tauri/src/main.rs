@@ -3,14 +3,33 @@
     windows_subsystem = "windows"
 )]
 
-use std::{fs, path::PathBuf};
-use tauri::{api::path::resource_dir, App, Env};
+use std::{fs, path::PathBuf, time::Duration};
+use tauri::{api::path::resource_dir, async_runtime, App, Env, Manager};
+use tokio::time;
 
 static mut RESOURCE_DIR: Option<PathBuf> = None;
 
 fn main() {
     tauri::Builder::default()
-        .setup(|app| Ok(setup(app)))
+        .setup(|app| {
+            let handle = app.handle();
+            setup(app);
+
+            async_runtime::spawn(async move {
+                println!("inside spawn");
+                let mut interval = time::interval(Duration::from_millis(1000));
+                println!("before loop");
+                loop {
+                    handle
+                        .emit_all("test-ipc", "payload")
+                        .expect("Error when emitting");
+                    println!("inside loop");
+                    interval.tick().await;
+                }
+            });
+
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![get_images])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
