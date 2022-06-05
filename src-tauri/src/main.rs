@@ -16,14 +16,11 @@ fn main() {
             setup(app);
 
             async_runtime::spawn(async move {
-                println!("inside spawn");
                 let mut interval = time::interval(Duration::from_millis(1000));
-                println!("before loop");
                 loop {
                     handle
-                        .emit_all("test-ipc", "payload")
+                        .emit_all("listen_media_update", "payload")
                         .expect("Error when emitting");
-                    println!("inside loop");
                     interval.tick().await;
                 }
             });

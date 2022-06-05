@@ -6,5 +6,5 @@ export async function getImages() {
 }
 
 export async function listenMediaUpdate(callback) {
-  return await event.listen("test-ipc", callback);
+  return await event.listen("listen_media_update", callback);
 }
