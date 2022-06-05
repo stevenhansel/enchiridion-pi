@@ -9,45 +9,13 @@ pub use hooks::use_interval;
 // https://rustwasm.github.io/wasm-bindgen/reference/passing-rust-closures-to-js.html#passing-rust-closures-to-imported-javascript-functions
 // https://rustwasm.github.io/wasm-bindgen/examples/closures.html
 
-// struct IpcEventListener {
-//     registration: Option<js_sys::Function>,
-// }
-
-// impl IpcEventListener {
-//     async fn new(callback: impl Fn() + 'static) -> Self {
-//         let callback: Box<dyn Fn()> = Box::new(callback);
-
-//         let registration =
-//             match test_ipc("test-ipc", &|| log::info!("stack lifetime closure")).await {
-//                 Ok(data) => data.unchecked_into::<js_sys::Function>(),
-//                 Err(err) => panic!("Something went wrong when receiving the stuff, {:#?}", err),
-//             };
-//         log::info!("success, here?");
-//         Self {
-//             registration: Some(registration),
-//         }
-//     }
-// }
-// impl Drop for IpcEventListener {
-//     fn drop(&mut self) {
-//         if let Some(registration) = self.registration.take() {
-//             log::info!("drop called");
-//             registration
-//                 .call0(&JsValue::undefined())
-//                 .expect("unregistration succeeds");
-//         }
-//     }
-// }
-
 #[wasm_bindgen(module = "/public/glue.js")]
 extern "C" {
     #[wasm_bindgen(js_name = getImages, catch)]
     pub async fn get_images() -> Result<JsValue, JsValue>;
 
-    #[wasm_bindgen(js_name = listen, catch)]
-    pub async fn test_ipc(event: &str, callback: &Closure<dyn FnMut()>)
-        -> Result<JsValue, JsValue>;
-
+    #[wasm_bindgen(js_name = listenMediaUpdate, catch)]
+    pub async fn listen_media_update(callback: &Closure<dyn FnMut()>) -> Result<JsValue, JsValue>;
 }
 
 fn main() {
@@ -60,7 +28,6 @@ pub fn app() -> Html {
     let images: UseStateHandle<Vec<String>> = use_state(|| vec!["".to_string()]);
     let active_image_index: UseStateHandle<usize> = use_state(|| 0);
     let millis = use_state(|| 0);
-    // let listener: UseStateHandle<Option<IpcEventListener>> = use_state(|| None);
 
     fn fetch_images(images: UseStateHandle<Vec<String>>) {
         spawn_local(async move {
@@ -76,8 +43,20 @@ pub fn app() -> Html {
         });
     }
 
-    fn test_ping() {
-        log::info!("hola amigo");
+    fn attach_media_update_listener() {
+        spawn_local(async move {
+            let cb = Closure::wrap(Box::new(|| log::info!("test pingedd")) as Box<dyn FnMut()>);
+
+            // TODO: handle unlistening part in the useeffect cleanup
+            match listen_media_update(&cb).await {
+                Ok(data) => data.unchecked_into::<js_sys::Function>(),
+                Err(err) => {
+                    panic!("Something went wrong when receiving the stuff, {:#?}", err)
+                }
+            };
+
+            cb.forget();
+        });
     }
 
     fn initialize_millis(millis: UseStateHandle<u32>) {
@@ -99,16 +78,7 @@ pub fn app() -> Html {
         use_effect_with_deps(
             move |_| {
                 spawn_local(async move {
-                    let cb =
-                        Closure::wrap(Box::new(|| log::info!("test pingedd")) as Box<dyn FnMut()>);
-                    match test_ipc("test-ipc", &cb).await {
-                        Ok(data) => data.unchecked_into::<js_sys::Function>(),
-                        Err(err) => {
-                            panic!("Something went wrong when receiving the stuff, {:#?}", err)
-                        }
-                    };
-
-                    cb.forget();
+                    attach_media_update_listener();
                 });
                 || ()
             },
