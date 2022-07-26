@@ -1,9 +1,9 @@
 {
   "build": {
     "distDir": "../app/dist",
-    "devPath": "http://localhost:8080",
-    "beforeDevCommand": "cd app && trunk serve",
-    "beforeBuildCommand": "cd app && trunk build",
+    "devPath": "http://localhost:5173",
+    "beforeDevCommand": "cd desktop-app && npm run dev",
+    "beforeBuildCommand": "cd desktop-app && npm run build",
     "withGlobalTauri": true
   },
   "package": {

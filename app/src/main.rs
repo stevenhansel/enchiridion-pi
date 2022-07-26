@@ -25,9 +25,10 @@ fn main() {
 
 #[function_component(App)]
 pub fn app() -> Html {
-    let images: UseStateHandle<Vec<String>> = use_state(|| vec!["".to_string()]);
-    let active_image_index: UseStateHandle<usize> = use_state(|| 0);
+    let images: UseStateHandle<Vec<String>> = use_state(|| vec![]);
+    let active_image_index: UseStateHandle<Option<usize>> = use_state(|| None);
     let millis = use_state(|| 0);
+    // let _unlisten_media_update: UseStateHandle<Option<js_sys::Function>> = use_state(|| None);
 
     fn fetch_images(images: UseStateHandle<Vec<String>>) {
         spawn_local(async move {
@@ -77,9 +78,7 @@ pub fn app() -> Html {
     {
         use_effect_with_deps(
             move |_| {
-                spawn_local(async move {
-                    attach_media_update_listener();
-                });
+                attach_media_update_listener();
                 || ()
             },
             (),
@@ -100,7 +99,11 @@ pub fn app() -> Html {
 
     {
         let active_image_index = active_image_index.clone();
-        let is_reached_end = *active_image_index == images.len() - 1;
+        let is_index_available = match *active_image_index {
+            Some(_) => true,
+            None => false,
+        };
+        let mut is_reached_end = false;
 
         use_interval(
             move || {
@@ -118,11 +121,13 @@ pub fn app() -> Html {
 
     html! {
         <div class="container">
-            <img class="image" src={images.get(*active_image_index).unwrap().clone()} />
-            <div class="contributor">
-                <p>{"Computer Engineering BINUS"}</p>
-                <p>{"Lukas Linardi, Steven Hansel"}</p>
-            </div>
+            if let Some(index) = *active_image_index {
+                <img class="image" src={images.get(index).unwrap().clone()} />
+                <div class="contributor">
+                    <p>{"Computer Engineering BINUS"}</p>
+                    <p>{"Lukas Linardi, Steven Hansel"}</p>
+                </div>
+            }
         </div>
     }
 }
