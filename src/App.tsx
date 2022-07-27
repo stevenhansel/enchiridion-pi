@@ -7,6 +7,10 @@ enum ApplicationErrorCode {
   InitializationError = 'INITIALIZATION_ERROR',
 }
 
+enum ApplicationCommands {
+  CreateDevice = "create",
+}
+
 type ApplicationError = {
   code: ApplicationErrorCode,
   message: string,
@@ -18,9 +22,24 @@ function App() {
   const [images, setImages] = useState<string[]>([]);
   const [error, setError] = useState<ApplicationError | null>(null);
 
+  const [isShowCommand, setIsShowCommand] = useState(false);
+  const [commandInput, setCommandInput] = useState('');
+
   const { index, startCarousel, stopCarousel } = useCarousel(CAROUSEL_INTERVAL, images.length - 1);
 
-  const initialize = useCallback(async () => {
+  const handleCommandKeydownListener = useCallback((e: KeyboardEvent) => {
+      if (e.key === 't') {
+        setIsShowCommand(true)
+      } else if (e.key === 'enter') {
+        setIsShowCommand(false);
+      } else if (e.key === 'Escape') {
+        if (isShowCommand) {
+          setIsShowCommand(false);
+        }
+      }
+  }, [isShowCommand]);
+
+  const getAnnouncementMedias = useCallback(async () => {
     try {
       const images: string[] = await invoke('get_images');
       setImages(images);
@@ -33,7 +52,7 @@ function App() {
   }, []);
 
   useEffect(() => {
-    initialize().then(() => {
+    getAnnouncementMedias().then(() => {
       startCarousel();
     });
 
@@ -42,11 +61,25 @@ function App() {
     }
   }, []);
 
+  useEffect(() => {
+    window.addEventListener('keypress', handleCommandKeydownListener);
+
+    return () => {
+      window.removeEventListener('keypress', handleCommandKeydownListener);
+    }
+  }, [isShowCommand])
+
   return (
     <div>
       <div className="container">
-        {images.length > 0 ? (
-          <img className="image" src={images[index]} />
+        <img className="image" src={images.length > 0 ? images[index] : "/binus.jpeg"} />
+
+        {isShowCommand ? (
+          <input 
+            className="command"
+            value={commandInput}
+            onChange={(e) => setCommandInput(e.target.value)}
+          />
         ) : null}
       </div>
       {error !== null ? (
