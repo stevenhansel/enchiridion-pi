@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 
 import { useCarousel } from './hooks';
 import { invoke } from '@tauri-apps/api';
+import { Menu } from './components';
 
 enum ApplicationErrorCode {
   InitializationError = 'INITIALIZATION_ERROR',
@@ -22,22 +23,18 @@ function App() {
   const [images, setImages] = useState<string[]>([]);
   const [error, setError] = useState<ApplicationError | null>(null);
 
-  const [isShowCommand, setIsShowCommand] = useState(false);
-  const [commandInput, setCommandInput] = useState('');
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const { index, startCarousel, stopCarousel } = useCarousel(CAROUSEL_INTERVAL, images.length - 1);
 
   const handleCommandKeydownListener = useCallback((e: KeyboardEvent) => {
-      if (e.key === 't') {
-        setIsShowCommand(true)
-      } else if (e.key === 'enter') {
-        setIsShowCommand(false);
-      } else if (e.key === 'Escape') {
-        if (isShowCommand) {
-          setIsShowCommand(false);
-        }
-      }
-  }, [isShowCommand]);
+    if (e.key === 'm') {
+      setIsMenuOpen(true);
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      setIsMenuOpen(false);
+    }
+  }, []);
 
   const getAnnouncementMedias = useCallback(async () => {
     try {
@@ -67,21 +64,14 @@ function App() {
     return () => {
       window.removeEventListener('keypress', handleCommandKeydownListener);
     }
-  }, [isShowCommand])
+  }, [])
 
   return (
     <div>
       <div className="container">
         <img className="image" src={images.length > 0 ? images[index] : "/binus.jpeg"} />
-
-        {isShowCommand ? (
-          <input 
-            className="command"
-            value={commandInput}
-            onChange={(e) => setCommandInput(e.target.value)}
-          />
-        ) : null}
       </div>
+
       {error !== null ? (
         <div>
           <p>Error Code: {error.code}</p>
