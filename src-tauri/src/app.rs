@@ -24,10 +24,10 @@ pub struct GetAnnouncementMediaPresignedURLResponse {
 
 pub fn run() {
     tauri::Builder::default()
-        // .setup(|app| {
-        //     // let handle = app.handle();
-        //     Ok(())
-        // })
+        .setup(|app| {
+            // let handle = app.handle();
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             commands::get_images,
             commands::get_buildings,
