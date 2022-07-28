@@ -13,7 +13,7 @@ type ApplicationError = {
   message: string,
 }
 
-const CAROUSEL_INTERVAL = 1000;
+const CAROUSEL_INTERVAL = 3000;
 
 function App() {
   const [images, setImages] = useState<string[]>([]);

@@ -183,7 +183,10 @@ impl AnnouncementConsumer {
             let device = Device::new(resource_dir);
             let device_information = match device.load() {
                 Ok(info) => info,
-                Err(_) => continue,
+                Err(_) => {
+                    println!("device information failed");
+                    continue
+                },
             };
 
             let mut consumer = Consumer::new(
@@ -195,6 +198,7 @@ impl AnnouncementConsumer {
             let data = match consumer.consume() {
                 Ok(res) => res,
                 Err(_) => {
+                    println!("consume failed");
                     continue;
                 }
             };
@@ -202,15 +206,19 @@ impl AnnouncementConsumer {
             let payload = match self.parse_announcement_consumer_data(data) {
                 Ok(payload) => payload,
                 Err(e) => {
+                    println!("e: {}", e.to_string());
                     continue;
                 }
             };
 
             if payload.action == AnnouncementSyncAction::Create {
                 if let Err(e) = self.process_action_type_create(payload).await {
+                    println!("e: {}", e.to_string());
                     continue;
                 };
             }
+
+            println!("success");
 
             self._handle
                 .emit_all("listen_media_update", "emitted")
