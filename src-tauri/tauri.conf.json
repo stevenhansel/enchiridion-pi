@@ -35,21 +35,9 @@
       ],
       "identifier": "com.enchiridion.app",
       "longDescription": "",
-      "macOS": {
-        "entitlements": null,
-        "exceptionDomain": "",
-        "frameworks": [],
-        "providerShortName": null,
-        "signingIdentity": null
-      },
       "resources": [],
       "shortDescription": "",
-      "targets": "all",
-      "windows": {
-        "certificateThumbprint": null,
-        "digestAlgorithm": "sha256",
-        "timestampUrl": ""
-      }
+      "targets": "deb"
     },
     "security": {
       "csp": "default-src: 'self'; media-src 'self' asset:"
