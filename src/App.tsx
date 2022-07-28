@@ -2,14 +2,10 @@ import { useCallback, useEffect, useState } from 'react'
 
 import { useCarousel } from './hooks';
 import { Menu } from './components';
-import { tauri } from './tauri';
+import { subscribeToAnnouncementUpdates, tauri } from './tauri';
 
 enum ApplicationErrorCode {
   InitializationError = 'INITIALIZATION_ERROR',
-}
-
-enum ApplicationCommands {
-  CreateDevice = "create",
 }
 
 type ApplicationError = {
@@ -23,7 +19,7 @@ function App() {
   const [images, setImages] = useState<string[]>([]);
   const [error, setError] = useState<ApplicationError | null>(null);
 
-  const [isMenuOpen, setIsMenuOpen] = useState(true);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const { index, startCarousel, stopCarousel } = useCarousel(CAROUSEL_INTERVAL, images.length - 1);
   
@@ -54,9 +50,14 @@ function App() {
   }, []);
 
   useEffect(() => {
-    getAnnouncementMedias().then(() => {
-      startCarousel();
-    });
+    getAnnouncementMedias()
+      .then(() => {
+        return subscribeToAnnouncementUpdates(() => getAnnouncementMedias());
+      })
+      .then((unlistener) => {
+        startCarousel();
+        return unlistener;
+      });
 
     return () => {
       stopCarousel();
