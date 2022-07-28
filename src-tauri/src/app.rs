@@ -28,7 +28,11 @@ pub fn run() {
         //     // let handle = app.handle();
         //     Ok(())
         // })
-        .invoke_handler(tauri::generate_handler![commands::get_images])
+        .invoke_handler(tauri::generate_handler![
+            commands::get_images,
+            commands::get_buildings,
+            commands::get_floors,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

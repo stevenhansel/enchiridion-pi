@@ -19,15 +19,3 @@ export const MenuContext = createContext<MenuContextType>({
   setActiveMenu: () => {},
   close: () => {},
 });
-
-export type Building = {};
-
-export type Floor = {
-  id: number;
-  name: string;
-  building: {
-    id: number;
-    name: string;
-    color: string;
-  };
-}

@@ -1,40 +1,110 @@
-import React, { useContext, useState } from 'react';
-import { Building, Floor, MenuContext, MenuOptions } from './constants';
+import React, { useContext, useEffect, useState } from 'react';
+import { Building, Floor, tauri } from '../tauri';
+import { MenuContext, MenuOptions } from './constants';
 
 const Registration = () => {
   const { setActiveMenu } = useContext(MenuContext);
 
+  const [isBuildingLoading, setIsBuildingLoading] = useState(true);
+  const [isFloorLoading, setIsFloorLoading] = useState(false);
+
+  const [error, setError] = useState('');
+
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [floorId, setFloorId] = useState<number | null>(null);
+  const [selectedBuildingId, setSelectedBuildingId] = useState<number|null>(null)
+  const [selectedFloorId, setSelectedFloorId] = useState<number | null>(null);
 
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [floors, setFloors] = useState<Floor[]>([]);
 
+  const fetchBuildings = async (): Promise<void> => {
+    try {
+      const buildings = await tauri.getBuildings();
+      if (buildings.length > 0) {
+        setSelectedBuildingId(buildings[0].id);
+      }
+
+      setBuildings(buildings);
+    } catch (e) {
+      setError('Something went wrong when getting the buildings data');
+    }
+
+      setIsBuildingLoading(false);
+  };
+
+  const fetchFloors = async (buildingId: number): Promise<void> => {
+    try {
+      setIsFloorLoading(true);
+
+      const floors = await tauri.getFloors(buildingId);
+      if (floors.length > 0) {
+        setSelectedFloorId(floors[0].id);
+      }
+
+      setFloors(floors);
+      setIsFloorLoading(false);
+    } catch (e) {
+      setError('Something went wrong when getting the floors data');
+    }
+  };
+
+  useEffect(() => {
+    fetchBuildings();
+  }, []);
+
+  useEffect(() => {
+    if (selectedBuildingId !== null) {
+      fetchFloors(selectedBuildingId);
+    }
+  }, [selectedBuildingId])
+
   return (
     <div>
-      <h2>Device Registration</h2>
-      <p>In order to register this device into Enchiridion System, please fill in the device information in the form below:</p>
+      {!isBuildingLoading ? (
+        <>
+          <h2>Device Registration</h2>
+          <p>In order to register this device into Enchiridion System, please fill in the device information in the form below:</p>
 
-      <div>
-        <p>Device Name</p>
-        <input value={name} onChange={(e) => setName(e.target.value)} />
-      </div>
+          <div>
+            <p>Device Name</p>
+            <input value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
 
-      <div>
-        <p>Device Description</p>
-        <textarea value={description} onChange={(e) => setDescription(e.target.value)} />
-      </div>
+          <div>
+            <p>Device Description</p>
+            <textarea value={description} onChange={(e) => setDescription(e.target.value)} />
+          </div>
 
-      <div>
-        <p>Device Location (Building & Floor)</p>
+          <div>
+            <p>Device Location (Building & Floor)</p>
 
-      </div>
+            {selectedBuildingId !== null ? (
+              <select value={selectedBuildingId} onChange={(e) => {
+                setSelectedBuildingId(parseInt(e.target.value))
+              }}>
+                  {buildings.map((building) => (
+                    <option key={building.id} value={building.id}>{building.name}</option>
+                  ))}
+                </select>
+            ) : null}
 
-      <div>
-        <button>Create</button>
-        <button onClick={() => setActiveMenu(MenuOptions.MainMenu)}>Cancel</button>
-      </div>
+            {selectedFloorId !== null ? (
+              <select value={selectedFloorId}>
+                {floors.map((floor) => (
+                  <option key={floor.id} value={floor.id}>{floor.name}</option>
+                ))}
+              </select>
+            ) : null}
+
+          </div>
+
+          <div>
+            <button>Create</button>
+            <button onClick={() => setActiveMenu(MenuOptions.MainMenu)}>Cancel</button>
+          </div>
+        </>
+      ) : <p>Loading...</p>}
     </div>
   );
 };

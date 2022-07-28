@@ -1,5 +1,5 @@
+use serde::{Deserialize, Serialize};
 use std::fs;
-use serde::{Serialize, Deserialize};
 use tauri::{api::path::resource_dir, Env};
 
 #[tauri::command]
@@ -39,20 +39,22 @@ pub struct ListBuildingContent {
 
 #[tauri::command]
 pub async fn get_buildings() -> Result<Vec<ListBuildingContent>, String> {
-    let response = match reqwest::get("https://enchiridion.stevenhansel.com/device/v1/buildings").await {
-        Ok(res) => match res.text().await {
-            Ok(data) => data,
+    println!("start request");
+    let response =
+        match reqwest::get("https://enchiridion.stevenhansel.com/device/v1/buildings").await {
+            Ok(res) => match res.text().await {
+                Ok(data) => data,
+                Err(e) => return Err(e.to_string()),
+            },
             Err(e) => return Err(e.to_string()),
-        }
-        Err(e) => return Err(e.to_string()),
-    };
+        };
 
     let data = match serde_json::from_str::<ListBuildingResponse>(response.as_str()) {
-        Ok(data) => data.contents,
+        Ok(data) => data,
         Err(e) => return Err(e.to_string()),
     };
 
-    Ok(data)
+    Ok(data.contents)
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -91,12 +93,17 @@ pub struct ListFloorDeviceContent {
 }
 
 #[tauri::command]
-pub async fn get_floors() -> Result<Vec<ListFloorContent>, String> {
-    let response = match reqwest::get("https://enchiridion.stevenhansel.com/device/v1/floors").await {
+pub async fn get_floors(building_id: i32) -> Result<Vec<ListFloorContent>, String> {
+    let response = match reqwest::get(format!(
+        "https://enchiridion.stevenhansel.com/device/v1/floors?buildingId={}",
+        building_id
+    ))
+    .await
+    {
         Ok(res) => match res.text().await {
             Ok(data) => data,
             Err(e) => return Err(e.to_string()),
-        }
+        },
         Err(e) => return Err(e.to_string()),
     };
 

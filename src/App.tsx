@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 
 import { useCarousel } from './hooks';
-import { invoke } from '@tauri-apps/api';
 import { Menu } from './components';
+import { tauri } from './tauri';
 
 enum ApplicationErrorCode {
   InitializationError = 'INITIALIZATION_ERROR',
@@ -42,7 +42,8 @@ function App() {
 
   const getAnnouncementMedias = useCallback(async () => {
     try {
-      const images: string[] = await invoke('get_images');
+      const images = await tauri.getImages();
+
       setImages(images);
     } catch (e) {
       setError({ 
