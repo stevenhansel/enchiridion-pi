@@ -1,7 +1,10 @@
 .menu-item {
   z-index: 40;
   padding: 20px;
+  width: 300px;
   background-color: gray;
+  margin-bottom: 12px;
+  cursor: pointer;
 }
 
 .menu-item > p {
