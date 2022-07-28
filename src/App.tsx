@@ -38,6 +38,7 @@ function App() {
 
   const getAnnouncementMedias = useCallback(async () => {
     try {
+      console.log('getting images');
       const images = await tauri.getImages();
 
       setImages(images);
