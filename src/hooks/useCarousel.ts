@@ -1,13 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 
-const useCarousel = (interval: number, max: number) => {
+const useCarousel = (interval: number) => {
   const [index, setIndex] = useState(0);
+  const [max, setMax] = useState<number|null>(null);
   const [isStart, setIsStart] = useState(false);
 
   const isFirstStart = useRef(true)
   const tick = useRef(0);
 
-  const startCarousel = () => setIsStart(true);
+  const startCarousel = (newMax: number) => {
+    setMax(newMax);
+    setIsStart(true);
+  };
 
   const stopCarousel = () => setIsStart(false);
 

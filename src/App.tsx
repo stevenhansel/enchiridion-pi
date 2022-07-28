@@ -21,7 +21,7 @@ function App() {
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  const { index, startCarousel, stopCarousel } = useCarousel(CAROUSEL_INTERVAL, images.length - 1);
+  const { index, startCarousel, stopCarousel } = useCarousel(CAROUSEL_INTERVAL);
   
   const handleCloseMenu = useCallback(() => {
     setIsMenuOpen(false);
@@ -38,10 +38,13 @@ function App() {
 
   const getAnnouncementMedias = useCallback(async () => {
     try {
+      stopCarousel();
+
       console.log('getting images');
       const images = await tauri.getImages();
 
       setImages(images);
+      startCarousel(images.length);
     } catch (e) {
       setError({ 
         code: ApplicationErrorCode.InitializationError,
@@ -50,19 +53,20 @@ function App() {
     }
   }, []);
 
-  useEffect(() => {
-    getAnnouncementMedias()
+  const initialize = () => {
+    const unlistener = getAnnouncementMedias()
       .then(() => {
         return subscribeToAnnouncementUpdates(() => getAnnouncementMedias());
       })
       .then((unlistener) => {
-        startCarousel();
         return unlistener;
       });
 
-    return () => {
-      stopCarousel();
-    }
+    return unlistener;
+  }
+
+  useEffect(() => {
+    initialize();
   }, []);
 
   useEffect(() => {
