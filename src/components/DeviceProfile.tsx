@@ -1,7 +1,7 @@
 import React, { useContext } from 'react';
 import { MenuContext, MenuOptions } from './constants';
 
-const DeviceInformation = () => {
+const DeviceProfile = () => {
   const { setActiveMenu } = useContext(MenuContext);
 
   return (
@@ -15,4 +15,4 @@ const DeviceInformation = () => {
   )
 };
 
-export default DeviceInformation;
+export default DeviceProfile;

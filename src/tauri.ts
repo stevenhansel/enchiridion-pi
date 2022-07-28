@@ -4,6 +4,8 @@ enum TauriCommands {
   GetImages = "get_images",
   GetBuildings = "get_buildings",
   GetFloors = "get_floors",
+  CreateDevice = "create_device",
+  GetDeviceInformation = "get_device_information",
 };
 
 export type Building = {
@@ -57,8 +59,41 @@ export const getFloors = async (buildingId: number): Promise<Floor[]> => {
   }
 };
 
+export type CreateDeviceParams = {
+  name: string;
+  description: string;
+  floorId: number;
+  isLinked: boolean;
+};
+
+export const createDevice = async (body: CreateDeviceParams) => {
+  try {
+    await invoke(TauriCommands.CreateDevice, { body });
+  } catch (err) {
+    throw err;
+  }
+};
+
+export type DeviceInformation = {
+  id: number;
+  name: string;
+  description: string;
+  location: string;
+};
+
+export const getDeviceInformation = async (): Promise<DeviceInformation> => {
+  try {
+    const deviceInformation: DeviceInformation = await invoke(TauriCommands.GetDeviceInformation);
+    return deviceInformation;
+  } catch (err) {
+    throw err;
+  }
+}
+
 export const tauri = {
   getImages,
   getBuildings,
   getFloors,
+  createDevice,
+  getDeviceInformation,
 }

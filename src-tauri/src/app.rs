@@ -32,6 +32,8 @@ pub fn run() {
             commands::get_images,
             commands::get_buildings,
             commands::get_floors,
+            commands::create_device,
+            commands::get_device_information,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

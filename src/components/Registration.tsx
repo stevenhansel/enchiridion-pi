@@ -6,9 +6,9 @@ const Registration = () => {
   const { setActiveMenu } = useContext(MenuContext);
 
   const [isBuildingLoading, setIsBuildingLoading] = useState(true);
-  const [isFloorLoading, setIsFloorLoading] = useState(false);
+  const [_isFloorLoading, setIsFloorLoading] = useState(false);
 
-  const [error, setError] = useState('');
+  const [_setIsFloorLoading, setError] = useState('');
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -17,6 +17,37 @@ const Registration = () => {
 
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [floors, setFloors] = useState<Floor[]>([]);
+
+  const validateForm = (): boolean => {
+    if (name === '') {
+      return false;      
+    }
+    if (description === '') {
+      return false;
+    }
+    if (selectedFloorId === null) {
+      return false;
+    } 
+
+    return true;
+  };
+
+  const handleSubmitForm = async () => {
+    if (!validateForm()) return;
+
+    try {
+      await tauri.createDevice({
+        name,
+        description,
+        floorId: selectedFloorId as number,
+        isLinked: true,
+      });
+      setActiveMenu(MenuOptions.MainMenu);
+    } catch (e) {
+      setError('Something went wrong when creating the device');
+    }
+
+  };
 
   const fetchBuildings = async (): Promise<void> => {
     try {
@@ -77,30 +108,34 @@ const Registration = () => {
           </div>
 
           <div>
-            <p>Device Location (Building & Floor)</p>
-
             {selectedBuildingId !== null ? (
-              <select value={selectedBuildingId} onChange={(e) => {
-                setSelectedBuildingId(parseInt(e.target.value))
-              }}>
-                  {buildings.map((building) => (
-                    <option key={building.id} value={building.id}>{building.name}</option>
-                  ))}
+              <div>
+                <span>Building:</span>
+                <select value={selectedBuildingId} onChange={(e) => {
+                  setSelectedBuildingId(parseInt(e.target.value))
+                }}>
+                    {buildings.map((building) => (
+                      <option key={building.id} value={building.id}>{building.name}</option>
+                    ))}
                 </select>
+              </div>
             ) : null}
 
             {selectedFloorId !== null ? (
-              <select value={selectedFloorId}>
-                {floors.map((floor) => (
-                  <option key={floor.id} value={floor.id}>{floor.name}</option>
-                ))}
-              </select>
+              <div>
+                <span>Floor:</span>
+                <select value={selectedFloorId} onChange={(e) => setSelectedFloorId(parseInt(e.target.value))}>
+                  {floors.map((floor) => (
+                    <option key={floor.id} value={floor.id}>{floor.name}</option>
+                  ))}
+                </select>
+              </div>
             ) : null}
 
           </div>
 
           <div>
-            <button>Create</button>
+            <button onClick={() => handleSubmitForm()}>Create</button>
             <button onClick={() => setActiveMenu(MenuOptions.MainMenu)}>Cancel</button>
           </div>
         </>

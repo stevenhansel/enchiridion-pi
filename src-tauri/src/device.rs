@@ -33,7 +33,6 @@ pub struct DeviceInformation {
     pub name: String,
     pub description: String,
     pub location: String,
-    pub floor_id: i32,
 }
 
 impl Device {
