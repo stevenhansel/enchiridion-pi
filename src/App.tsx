@@ -23,9 +23,13 @@ function App() {
   const [images, setImages] = useState<string[]>([]);
   const [error, setError] = useState<ApplicationError | null>(null);
 
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(true);
 
   const { index, startCarousel, stopCarousel } = useCarousel(CAROUSEL_INTERVAL, images.length - 1);
+  
+  const handleCloseMenu = useCallback(() => {
+    setIsMenuOpen(false);
+  }, []);
 
   const handleCommandKeydownListener = useCallback((e: KeyboardEvent) => {
     if (e.key === 'm') {
@@ -68,7 +72,11 @@ function App() {
 
   return (
     <div>
-      <div className="container">
+      <div>
+        {isMenuOpen ? (
+          <Menu close={handleCloseMenu} />
+        ) : null}
+
         <img className="image" src={images.length > 0 ? images[index] : "/binus.jpeg"} />
       </div>
 
