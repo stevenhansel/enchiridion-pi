@@ -1,5 +1,6 @@
+import { CircularProgress } from "@mui/material";
 import { createContext, useEffect, useState } from "react";
-import { SyncLoader } from "react-spinners";
+
 import { Authentication, Display } from "./pages";
 import { DeviceInformation, getDeviceInformation } from "./tauri";
 
@@ -33,30 +34,37 @@ const App = () => {
   const [error, setError] = useState<ApplicationError | null>(null);
 
   useEffect(() => {
-    getDeviceInformation().then((device) => setDevice(device));
+    setLoading(true);
+
+    getDeviceInformation()
+      .then((device) => {
+        setLoading(false);
+        setDevice(device);
+      })
+      .catch(() => setLoading(false));
   }, []);
 
   return (
-    <ApplicationContext.Provider
-      value={{ device, setDevice, loading, setLoading, error, setError }}
-    >
-      <div className="application-container">
-        {loading ? (
-          <SyncLoader />
-        ) : (
-          <>
-            {device === null ? <Authentication /> : <Display />}
+      <ApplicationContext.Provider
+        value={{ device, setDevice, loading, setLoading, error, setError }}
+      >
+        <div className="application-container">
+          {loading ? (
+            <CircularProgress />
+          ) : (
+            <>
+              {device === null ? <Authentication /> : <Display />}
 
-            {error !== null ? (
-              <div>
-                <p>Error Code: {error.code}</p>
-                <p>{error.message}</p>
-              </div>
-            ) : null}
-          </>
-        )}
-      </div>
-    </ApplicationContext.Provider>
+              {error !== null ? (
+                <div>
+                  <p>Error Code: {error.code}</p>
+                  <p>{error.message}</p>
+                </div>
+              ) : null}
+            </>
+          )}
+        </div>
+      </ApplicationContext.Provider>
   );
 };
 

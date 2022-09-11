@@ -1,7 +1,5 @@
-import { RouteComponentProps } from '@reach/router';
-
-const Authentication = (props: RouteComponentProps) => {
-  return <div></div>;
+const Authentication = () => {
+  return <div>asd</div>;
 };
 
 export default Authentication;
