@@ -13,6 +13,8 @@
   "tauri": {
     "allowlist": {
       "all": true,
+      "fs": {
+      },
       "protocol": {
         "asset": true,
         "assetScope": ["*"]

@@ -1,100 +1,63 @@
-import { useCallback, useEffect, useState } from 'react'
+import { createContext, useEffect, useState } from "react";
+import { SyncLoader } from "react-spinners";
+import { Authentication, Display } from "./pages";
+import { DeviceInformation, getDeviceInformation } from "./tauri";
 
-import { useCarousel } from './hooks';
-import { Menu } from './components';
-import { subscribeToAnnouncementUpdates, tauri } from './tauri';
+type SetState<T> = React.SetStateAction<React.Dispatch<T>>;
 
-enum ApplicationErrorCode {
-  InitializationError = 'INITIALIZATION_ERROR',
-}
+type ApplicationContextType = {
+  device: DeviceInformation | null;
+  setDevice: SetState<DeviceInformation | null>;
 
-type ApplicationError = {
-  code: ApplicationErrorCode,
-  message: string,
-}
+  loading: boolean;
+  setLoading: SetState<boolean>;
 
-const CAROUSEL_INTERVAL = 3000;
+  error: ApplicationError | null;
+  setError: SetState<ApplicationError | null>;
+};
 
-function App() {
-  const [images, setImages] = useState<string[]>([]);
+const ApplicationContext = createContext<ApplicationContextType>({
+  device: null,
+  setDevice: () => {},
+
+  loading: false,
+  setLoading: () => {},
+
+  error: null,
+  setError: () => {},
+});
+
+const App = () => {
+  const [device, setDevice] = useState<DeviceInformation | null>(null);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<ApplicationError | null>(null);
 
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-
-  const { index, startCarousel, stopCarousel } = useCarousel(CAROUSEL_INTERVAL);
-  
-  const handleCloseMenu = useCallback(() => {
-    setIsMenuOpen(false);
-  }, []);
-
-  const handleCommandKeydownListener = useCallback((e: KeyboardEvent) => {
-    if (e.key === 'm') {
-      setIsMenuOpen(true);
-    } else if (e.key === 'Escape') {
-      e.preventDefault();
-      setIsMenuOpen(false);
-    }
-  }, []);
-
-  const getAnnouncementMedias = useCallback(async () => {
-    try {
-      stopCarousel();
-
-      console.log('getting images');
-      const images = await tauri.getImages();
-
-      setImages(images);
-      startCarousel(images.length);
-    } catch (e) {
-      setError({ 
-        code: ApplicationErrorCode.InitializationError,
-        message: 'Something went wrong when initializing the application',
-      });
-    }
-  }, []);
-
-  const initialize = () => {
-    const unlistener = getAnnouncementMedias()
-      .then(() => {
-        return subscribeToAnnouncementUpdates(() => getAnnouncementMedias());
-      })
-      .then((unlistener) => {
-        return unlistener;
-      });
-
-    return unlistener;
-  }
-
   useEffect(() => {
-    initialize();
+    getDeviceInformation().then((device) => setDevice(device));
   }, []);
-
-  useEffect(() => {
-    window.addEventListener('keypress', handleCommandKeydownListener);
-
-    return () => {
-      window.removeEventListener('keypress', handleCommandKeydownListener);
-    }
-  }, [])
 
   return (
-    <div>
-      <div>
-        {isMenuOpen ? (
-          <Menu close={handleCloseMenu} />
-        ) : null}
+    <ApplicationContext.Provider
+      value={{ device, setDevice, loading, setLoading, error, setError }}
+    >
+      <div className="application-container">
+        {loading ? (
+          <SyncLoader />
+        ) : (
+          <>
+            {device === null ? <Authentication /> : <Display />}
 
-        <img className="image" src={images.length > 0 ? images[index] : "/binus.jpeg"} />
+            {error !== null ? (
+              <div>
+                <p>Error Code: {error.code}</p>
+                <p>{error.message}</p>
+              </div>
+            ) : null}
+          </>
+        )}
       </div>
+    </ApplicationContext.Provider>
+  );
+};
 
-      {error !== null ? (
-        <div>
-          <p>Error Code: {error.code}</p>
-          <p>{error.message}</p>
-        </div>
-      ) : null}
-    </div>
-  )
-}
-
-export default App
+export default App;

@@ -1,29 +1,9 @@
 use std::sync::{Arc, Mutex};
 
-use serde::{Deserialize, Serialize};
-use tauri::{api::path::resource_dir, async_runtime, Env};
+use tauri::async_runtime;
+use tauri_plugin_log::{LogTarget, LoggerBuilder};
 
-use crate::{commands, consumer::AnnouncementConsumer, device::Device};
-
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub enum AnnouncementSyncAction {
-    Create,
-    Delete,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SyncCreateAnnouncementActionParams {
-    action: AnnouncementSyncAction,
-    announcement_id: i32,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct GetAnnouncementMediaPresignedURLResponse {
-    media: String,
-}
+use crate::{commands, consumer::AnnouncementConsumer};
 
 pub fn run() {
     tauri::Builder::default()
@@ -39,7 +19,6 @@ pub fn run() {
                         .expect("Failed to open redis connection"),
                 ));
 
-
                 let consumer = AnnouncementConsumer::new(redis_connection, handle);
                 consumer.consume().await;
             });
@@ -53,6 +32,15 @@ pub fn run() {
             commands::create_device,
             commands::get_device_information,
         ])
+        .plugin(LoggerBuilder::default().targets([
+            LogTarget::LogDir,
+            LogTarget::Stdout,
+            LogTarget::Webview,
+        ]).build())
         .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .unwrap_or_else(|_| {
+            log::warn!("Something when wrong when initializing the application")
+        });
+
+    log::info!("Application has started running");
 }

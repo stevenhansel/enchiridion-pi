@@ -1,11 +1,13 @@
 use std::{
     fs::{self, File},
     sync::{Arc, Mutex}, io::Cursor,
+    time::Duration,
 };
 
 use redis::{streams::StreamKey, Value};
 use serde::{Deserialize, Serialize};
 use tauri::{api::path::resource_dir, AppHandle, Env, Manager};
+use tokio::time::sleep;
 
 use crate::{device::Device, queue::Consumer};
 
@@ -184,7 +186,7 @@ impl AnnouncementConsumer {
             let device_information = match device.load() {
                 Ok(info) => info,
                 Err(_) => {
-                    println!("device information failed");
+                    sleep(Duration::from_millis(250)).await;
                     continue
                 },
             };

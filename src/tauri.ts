@@ -3,9 +3,6 @@ import { listen, UnlistenFn } from '@tauri-apps/api/event';
 
 enum TauriCommands {
   GetImages = "get_images",
-  GetBuildings = "get_buildings",
-  GetFloors = "get_floors",
-  CreateDevice = "create_device",
   GetDeviceInformation = "get_device_information",
 };
 
@@ -40,41 +37,6 @@ const getImages = async () => {
   }
 };
 
-export const getBuildings = async (): Promise<Building[]> => {
-  try {
-    const contents: Building[] = await invoke(TauriCommands.GetBuildings);
-
-    return contents;
-  } catch (err) {
-    throw err;
-  }
-};
-
-export const getFloors = async (buildingId: number): Promise<Floor[]> => {
-  try {
-    const contents: Floor[] = await invoke(TauriCommands.GetFloors, { buildingId });
-
-    return contents;
-  } catch (err) {
-    throw err;
-  }
-};
-
-export type CreateDeviceParams = {
-  name: string;
-  description: string;
-  floorId: number;
-  isLinked: boolean;
-};
-
-export const createDevice = async (body: CreateDeviceParams) => {
-  try {
-    await invoke(TauriCommands.CreateDevice, { body });
-  } catch (err) {
-    throw err;
-  }
-};
-
 export type DeviceInformation = {
   id: number;
   name: string;
@@ -103,8 +65,5 @@ export const subscribeToAnnouncementUpdates = async (callback: () => void): Prom
 
 export const tauri = {
   getImages,
-  getBuildings,
-  getFloors,
-  createDevice,
   getDeviceInformation,
 }

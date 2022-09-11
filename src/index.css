@@ -21,6 +21,8 @@ body {
   height: 100vh;
 }
 
+.application-container {}
+
 .image {
   position: absolute;
   top: 50%;
