@@ -1,7 +1,6 @@
 use std::{
     fs::{self, File},
     io::Cursor,
-    sync::{Arc, Mutex},
     time::Duration,
 };
 
@@ -10,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use tauri::{api::path::resource_dir, AppHandle, Env, Manager};
 use tokio::time::sleep;
 
-use crate::{device::Device, events::ApplicationEvent, queue::Consumer, api::EnchiridionApi};
+use crate::{api::EnchiridionApi, device::Device, events::ApplicationEvent, queue::Consumer};
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -36,14 +35,18 @@ pub struct GetAnnouncementMediaPresignedURLResponse {
 }
 
 pub struct AnnouncementConsumer {
-    _redis: Arc<Mutex<redis::Connection>>,
+    _redis: deadpool_redis::Pool,
     _api: EnchiridionApi,
     _handle: AppHandle,
 }
 
 impl AnnouncementConsumer {
-    pub fn new(_redis: Arc<Mutex<redis::Connection>>, _api: EnchiridionApi, _handle: AppHandle) -> Self {
-        AnnouncementConsumer { _redis, _api, _handle }
+    pub fn new(_redis: deadpool_redis::Pool, _api: EnchiridionApi, _handle: AppHandle) -> Self {
+        AnnouncementConsumer {
+            _redis,
+            _api,
+            _handle,
+        }
     }
 
     pub fn queue_name_builder(&self, device_id: i32) -> String {
@@ -192,7 +195,7 @@ impl AnnouncementConsumer {
                 device_information.id.to_string(),
             );
 
-            let data = match consumer.consume() {
+            let data = match consumer.consume().await {
                 Ok(res) => res,
                 Err(_) => {
                     log::warn!("An error occurred while consuming data");

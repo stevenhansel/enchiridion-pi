@@ -1,8 +1,6 @@
-use std::sync::{Arc, Mutex};
-
 use redis::{
     streams::{StreamKey, StreamReadOptions, StreamReadReply},
-    Commands, RedisResult,
+    RedisResult, AsyncCommands,
 };
 
 pub enum RedisErrorCode {
@@ -23,7 +21,7 @@ pub enum ConsumerError {
 }
 
 pub struct Consumer {
-    client: Arc<Mutex<redis::Connection>>,
+    client: deadpool_redis::Pool,
     queue_name: String,
     group_name: String,
     consumer_name: String,
@@ -33,7 +31,7 @@ pub struct Consumer {
 
 impl Consumer {
     pub fn new(
-        client: Arc<Mutex<redis::Connection>>,
+        client: deadpool_redis::Pool,
         queue_name: String,
         consumer_name: String,
     ) -> Consumer {
@@ -47,18 +45,19 @@ impl Consumer {
         }
     }
 
-    pub fn consume(&mut self) -> Result<Vec<StreamKey>, ConsumerError> {
-        let mut redis = match self.client.lock() {
-            Ok(redis) => redis,
-            Err(e) => return Err(ConsumerError::RedisError(e.to_string())),
-        };
+    pub async fn consume(&mut self) -> Result<Vec<StreamKey>, ConsumerError> {
+        let mut redis = self
+            .client
+            .get()
+            .await
+            .expect("Cannot get redis connection");
 
         if !self.is_group_exist {
             if let Err(e) = redis.xgroup_create_mkstream::<String, String, String, ()>(
                 self.queue_name.clone(),
                 self.group_name.clone(),
                 "$".into(),
-            ) {
+            ).await {
                 let code = match e.code() {
                     Some(code) => code,
                     None => return Err(ConsumerError::RedisError(e.to_string())),
@@ -77,7 +76,7 @@ impl Consumer {
             .block(0)
             .count(1);
         let results: RedisResult<StreamReadReply> =
-            redis.xread_options(&[self.queue_name.clone()], &[">"], &opts);
+            redis.xread_options(&[self.queue_name.clone()], &[">"], &opts).await;
 
         match results {
             Ok(r) => Ok(r.keys),
@@ -85,17 +84,18 @@ impl Consumer {
         }
     }
 
-    pub fn ack(&self, message_id: String) -> Result<(), ConsumerError> {
-        let mut redis = match self.client.lock() {
-            Ok(redis) => redis,
-            Err(e) => return Err(ConsumerError::RedisError(e.to_string())),
-        };
+    pub async fn ack(&self, message_id: String) -> Result<(), ConsumerError> {
+        let mut redis = self
+            .client
+            .get()
+            .await
+            .expect("Cannot get redis connection");
 
         if let Err(e) = redis.xack::<String, String, String, ()>(
             self.queue_name.clone(),
             self.group_name.clone(),
             &[message_id],
-        ) {
+        ).await {
             return Err(ConsumerError::RedisError(e.to_string()));
         }
 
