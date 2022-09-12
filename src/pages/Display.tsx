@@ -11,14 +11,14 @@ const Display = () => {
 
   const { index, startCarousel, stopCarousel } = useCarousel(CAROUSEL_INTERVAL);
 
-  const getAnnouncementMedias = useCallback(async () => {
+  const getAnnouncementMedias = async () => {
     try {
       stopCarousel();
 
       const images = await tauri.getImages();
+      if (images.length === 0) return;
 
       setImages(images);
-      console.log('images: ', images);
       startCarousel(images.length);
     } catch (e) {
       setError({
@@ -26,13 +26,12 @@ const Display = () => {
         message: "Something went wrong when initializing the application",
       });
     }
-  }, [images]);
+  };
 
   const initialize = () => {
     const unlistener = getAnnouncementMedias()
       .then(() => {
         return subscribeToAnnouncementUpdates(() => {
-          console.log("update announcement");
           getAnnouncementMedias();
         });
       })
@@ -49,19 +48,35 @@ const Display = () => {
 
   return (
     <div>
-      <img
-        style={{
-          position: "absolute",
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%, -50%)",
-          display: "block",
-          width: "100vw",
-          height: "auto",
-          objectFit: "cover",
-        }}
-        src={images.length > 0 ? images[index] : "/binus.jpeg"}
-      />
+      {images.length > 0 ? (
+        <img
+          style={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            display: "block",
+            width: "100vw",
+            height: "auto",
+            objectFit: "cover",
+          }}
+          src={images[index]}
+        />
+      ) : (
+        <img
+          style={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            display: "block",
+            width: "100vw",
+            height: "auto",
+            objectFit: "cover",
+          }}
+          src="/binus.jpeg"
+        />
+      )}
     </div>
   );
 };

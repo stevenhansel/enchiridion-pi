@@ -93,7 +93,12 @@ impl AnnouncementConsumer {
             }
         }
 
-        let mut file = match File::create(images_dir.clone().join(presigned.filename)) {
+        let filetype: Vec<&str> = presigned.filename.split(".").collect();
+        let filetype = filetype[filetype.len() - 1];
+
+        let filename = format!("{}.{}", announcement_id, filetype);
+
+        let mut file = match File::create(images_dir.clone().join(filename)) {
             Ok(file) => file,
             Err(e) => {
                 return Err(format!(
@@ -188,7 +193,6 @@ impl AnnouncementConsumer {
                 }
             };
 
-            println!("id: {}", self.queue_name_builder(device_information.id));
             let mut consumer = Consumer::new(
                 self._redis.clone(),
                 self.queue_name_builder(device_information.id),
