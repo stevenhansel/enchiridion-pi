@@ -11,7 +11,7 @@ use tokio::time::sleep;
 
 use crate::{api::EnchiridionApi, device::Device, events::ApplicationEvent, queue::Consumer};
 
-use super::DeleteAnnouncementMediaError;
+use super::{DeleteAnnouncementMediaError, ResyncAnnouncementsError};
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -26,7 +26,7 @@ pub enum AnnouncementSyncAction {
 pub struct AnnouncementConsumerPayload {
     action: AnnouncementSyncAction,
     announcement_id: Option<i32>,
-    announcement_ids: Option<i32>,
+    announcement_ids: Option<Vec<i32>>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -150,6 +150,25 @@ impl AnnouncementConsumer {
         Ok(())
     }
 
+    async fn resync_announcements(
+        &self,
+        announcement_ids: Vec<i32>,
+    ) -> Result<(), ResyncAnnouncementsError> {
+        for id in &announcement_ids {
+            if let Err(_) = self.delete_announcement_media(*id).await {
+                return Err(ResyncAnnouncementsError::ApplicationError);
+            }
+        }
+
+        for id in &announcement_ids {
+            if let Err(_) = self.get_announcement_media(*id).await {
+                return Err(ResyncAnnouncementsError::ApplicationError);
+            }
+        }
+
+        Ok(())
+    }
+
     fn parse_announcement_consumer_data(
         &self,
         data: Vec<StreamKey>,
@@ -218,7 +237,15 @@ impl AnnouncementConsumer {
         &self,
         payload: AnnouncementConsumerPayload,
     ) -> Result<(), String> {
-        Ok(())
+        let announcement_ids = match payload.announcement_ids {
+            Some(ids) => ids,
+            None => return Err("Unable to process action, announcement_id is null".into()),
+        };
+
+        match self.resync_announcements(announcement_ids).await {
+            Ok(()) => Ok(()),
+            Err(e) => return Err(e.to_string()),
+        }
     }
 
     pub async fn consume(&self) {
