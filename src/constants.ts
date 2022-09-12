@@ -1,11 +1,12 @@
-enum ApplicationErrorCode {
+export enum ApplicationErrorCode {
   InitializationError = 'INITIALIZATION_ERROR',
+  AuthenticationFailed = 'AUTHENTICATION_FAILED',
 }
 
-type ApplicationError = {
+export type ApplicationError = {
   code: ApplicationErrorCode,
   message: string,
 }
 
-const CAROUSEL_INTERVAL = 3000;
+export const CAROUSEL_INTERVAL = 3000;
 

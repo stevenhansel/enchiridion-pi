@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 use tauri::async_runtime;
 use tauri_plugin_log::{LogTarget, LoggerBuilder};
 
-use crate::{commands, consumer::AnnouncementConsumer};
+use crate::{announcement::AnnouncementConsumer, commands};
 
 pub fn run() {
     tauri::Builder::default()
@@ -27,10 +27,8 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::get_images,
-            commands::get_buildings,
-            commands::get_floors,
-            commands::create_device,
             commands::get_device_information,
+            commands::authenticate,
         ])
         .plugin(LoggerBuilder::default().targets([
             LogTarget::LogDir,

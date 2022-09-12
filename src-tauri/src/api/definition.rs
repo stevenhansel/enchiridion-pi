@@ -1,6 +1,7 @@
 use serde::Deserialize;
 
-#[derive(Debug, Deserialize)]
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct MeResponse {
     pub id: i32,
     pub access_key_id: String,
@@ -14,8 +15,8 @@ pub struct MeResponse {
     pub updated_at: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Deserialize)]
 pub struct GetAnnouncementMediaResponse {
-    filename: String,
-    media: String,
+    pub filename: String,
+    pub media: String,
 }

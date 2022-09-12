@@ -1,4 +1,7 @@
-use std::{fs::{self, File}, path::PathBuf};
+use std::{
+    fs::{self, File},
+    path::PathBuf,
+};
 
 use serde::{Deserialize, Serialize};
 
@@ -21,30 +24,22 @@ impl std::fmt::Display for DeviceError {
     }
 }
 
-pub struct Device {
-    directory: PathBuf,
-    data: Option<DeviceInformation>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct DeviceInformation {
+pub struct Device {
     pub id: i32,
     pub name: String,
     pub description: String,
     pub location: String,
+    pub floor_id: i32,
+    pub building_id: i32,
+    pub created_at: String,
+    pub updated_at: String,
 }
 
 impl Device {
-    pub fn new(resource_dir: PathBuf) -> Self {
-        Device {
-            directory: resource_dir,
-            data: None,
-        }
-    }
-
-    pub fn load(&self) -> Result<DeviceInformation, DeviceError> {
-        let file_path = self.directory.join(DEVICE_INFORMATION_FILENAME);
+    pub fn load(directory: PathBuf) -> Result<Self, DeviceError> {
+        let file_path = directory.join(DEVICE_INFORMATION_FILENAME);
         if !file_path.exists() {
             return Err(DeviceError::DeviceNotCreated);
         }
@@ -54,14 +49,14 @@ impl Device {
             Err(_) => return Err(DeviceError::ApplicationError),
         };
 
-        match serde_json::from_str::<DeviceInformation>(raw.as_str()) {
+        match serde_json::from_str::<Device>(raw.as_str()) {
             Ok(data) => Ok(data),
             Err(_) => Err(DeviceError::ApplicationError),
         }
     }
 
-    pub fn save(&self, data: DeviceInformation) -> Result<(), DeviceError> {
-        let file_path = self.directory.join(DEVICE_INFORMATION_FILENAME);
+    pub fn save(directory: PathBuf, data: Device) -> Result<Self, DeviceError> {
+        let file_path = directory.join(DEVICE_INFORMATION_FILENAME);
         if !file_path.exists() {
             if let Err(_) = File::create(file_path.clone()) {
                 return Err(DeviceError::ApplicationError);
@@ -74,7 +69,7 @@ impl Device {
         };
 
         match fs::write(file_path, deserialized_data) {
-            Ok(_) => Ok(()),
+            Ok(_) => Ok(data),
             Err(_) => Err(DeviceError::ApplicationError),
         }
     }

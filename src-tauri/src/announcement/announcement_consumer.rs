@@ -1,6 +1,7 @@
 use std::{
     fs::{self, File},
-    sync::{Arc, Mutex}, io::Cursor,
+    io::Cursor,
+    sync::{Arc, Mutex},
     time::Duration,
 };
 
@@ -9,20 +10,22 @@ use serde::{Deserialize, Serialize};
 use tauri::{api::path::resource_dir, AppHandle, Env, Manager};
 use tokio::time::sleep;
 
-use crate::{device::Device, queue::Consumer};
+use crate::{device::Device, events::ApplicationEvent, queue::Consumer};
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub enum AnnouncementSyncAction {
     Create,
     Delete,
+    Resync,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AnnouncementConsumerPayload {
     action: AnnouncementSyncAction,
-    announcement_id: i32,
+    announcement_id: Option<i32>,
+    announcement_ids: Option<i32>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -173,22 +176,40 @@ impl AnnouncementConsumer {
         &self,
         payload: AnnouncementConsumerPayload,
     ) -> Result<(), String> {
-        match self.get_announcement_media(payload.announcement_id).await {
+        let announcement_id = match payload.announcement_id {
+            Some(id) => id,
+            None => return Err("Unable to process action, announcement_id is null".into()),
+        };
+        match self.get_announcement_media(announcement_id).await {
             Ok(()) => Ok(()),
             Err(e) => return Err(e.to_string()),
         }
     }
 
+    pub async fn process_action_type_delete(
+        &self,
+        payload: AnnouncementConsumerPayload,
+    ) -> Result<(), String> {
+        Ok(())
+    }
+
+    pub async fn process_action_type_resync(
+        &self,
+        payload: AnnouncementConsumerPayload,
+    ) -> Result<(), String> {
+        Ok(())
+    }
+
     pub async fn consume(&self) {
         loop {
-            let resource_dir = resource_dir(self._handle.package_info(), &Env::default()).unwrap();
-            let device = Device::new(resource_dir);
-            let device_information = match device.load() {
+            let device_information = match Device::load(
+                resource_dir(self._handle.package_info(), &Env::default()).unwrap(),
+            ) {
                 Ok(info) => info,
                 Err(_) => {
                     sleep(Duration::from_millis(250)).await;
-                    continue
-                },
+                    continue;
+                }
             };
 
             let mut consumer = Consumer::new(
@@ -200,7 +221,7 @@ impl AnnouncementConsumer {
             let data = match consumer.consume() {
                 Ok(res) => res,
                 Err(_) => {
-                    println!("consume failed");
+                    log::warn!("An error occurred while consuming data");
                     continue;
                 }
             };
@@ -208,22 +229,45 @@ impl AnnouncementConsumer {
             let payload = match self.parse_announcement_consumer_data(data) {
                 Ok(payload) => payload,
                 Err(e) => {
-                    println!("e: {}", e.to_string());
+                    log::warn!("Unable to parse the announcement consumer data: {}", e);
                     continue;
                 }
             };
 
-            if payload.action == AnnouncementSyncAction::Create {
-                if let Err(e) = self.process_action_type_create(payload).await {
-                    println!("e: {}", e.to_string());
-                    continue;
-                };
-            }
+            log::info!("Start consuming announcement data at");
 
-            println!("success");
+            match payload.action {
+                AnnouncementSyncAction::Create => {
+                    if let Err(e) = self.process_action_type_create(payload).await {
+                        log::warn!(
+                            "An error occurred while processing announcement creation: {}",
+                            e
+                        );
+                        continue;
+                    };
+                }
+                AnnouncementSyncAction::Delete => {
+                    if let Err(e) = self.process_action_type_delete(payload).await {
+                        log::warn!(
+                            "An error occurred while processing announcement creation: {}",
+                            e
+                        );
+                        continue;
+                    }
+                }
+                AnnouncementSyncAction::Resync => {
+                    if let Err(e) = self.process_action_type_resync(payload).await {
+                        log::warn!(
+                            "An error occurred while processing announcement creation: {}",
+                            e
+                        );
+                        continue;
+                    }
+                }
+            };
 
             self._handle
-                .emit_all("listen_media_update", "emitted")
+                .emit_all(ApplicationEvent::MediaUpdate.tag(), "emitted")
                 .expect("Error when emitting");
         }
     }

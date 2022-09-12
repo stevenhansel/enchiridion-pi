@@ -3,11 +3,14 @@
     windows_subsystem = "windows"
 )]
 
+pub mod announcement;
 pub mod queue;
-pub mod consumer;
 pub mod device;
-pub mod commands;
+pub mod api;
+
 pub mod app;
+pub mod commands;
+pub mod events;
 
 fn main() {
     app::run()
