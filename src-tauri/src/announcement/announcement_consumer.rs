@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use tauri::{api::path::resource_dir, AppHandle, Env, Manager};
 use tokio::time::sleep;
 
-use crate::{device::Device, events::ApplicationEvent, queue::Consumer};
+use crate::{device::Device, events::ApplicationEvent, queue::Consumer, api::EnchiridionApi};
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -21,7 +21,7 @@ pub enum AnnouncementSyncAction {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct AnnouncementConsumerPayload {
     action: AnnouncementSyncAction,
     announcement_id: Option<i32>,
@@ -37,12 +37,13 @@ pub struct GetAnnouncementMediaPresignedURLResponse {
 
 pub struct AnnouncementConsumer {
     _redis: Arc<Mutex<redis::Connection>>,
+    _api: EnchiridionApi,
     _handle: AppHandle,
 }
 
 impl AnnouncementConsumer {
-    pub fn new(_redis: Arc<Mutex<redis::Connection>>, _handle: AppHandle) -> Self {
-        AnnouncementConsumer { _redis, _handle }
+    pub fn new(_redis: Arc<Mutex<redis::Connection>>, _api: EnchiridionApi, _handle: AppHandle) -> Self {
+        AnnouncementConsumer { _redis, _api, _handle }
     }
 
     pub fn queue_name_builder(&self, device_id: i32) -> String {
@@ -50,44 +51,16 @@ impl AnnouncementConsumer {
     }
 
     async fn get_announcement_media(&self, announcement_id: i32) -> Result<(), String> {
-        let client = reqwest::Client::new();
-        let response_data = match client
-            .get(format!(
-                "https://enchiridion.stevenhansel.com/device/v1/announcements/{}/media",
-                announcement_id
-            ))
-            .send()
-            .await
-        {
-            Ok(res) => match res.text().await {
-                Ok(data) => data,
-                Err(e) => {
-                    return Err(format!(
-                        "Something went wrong when getting the announcement media: {}",
-                        e.to_string(),
-                    ))
-                }
-            },
-            Err(e) => {
+        let presigned = match self._api.get_announcement_media(announcement_id).await {
+            Ok(presigned) => presigned,
+            Err(_) => {
                 return Err(format!(
-                    "Something went wrong when getting the announcement media: {}",
-                    e.to_string(),
+                    "Something went wrong when getting the announcement media",
                 ))
             }
         };
 
-        let presigned = match serde_json::from_str::<GetAnnouncementMediaPresignedURLResponse>(
-            response_data.as_str(),
-        ) {
-            Ok(data) => data,
-            Err(e) => {
-                return Err(format!(
-                    "Something went wrong when getting the announcement media: {}",
-                    e.to_string(),
-                ))
-            }
-        };
-        let image = match client.get(presigned.media).send().await {
+        let image = match reqwest::get(presigned.media).await {
             Ok(res) => res,
             Err(e) => {
                 return Err(format!(
@@ -212,6 +185,7 @@ impl AnnouncementConsumer {
                 }
             };
 
+            println!("id: {}", self.queue_name_builder(device_information.id));
             let mut consumer = Consumer::new(
                 self._redis.clone(),
                 self.queue_name_builder(device_information.id),
@@ -234,7 +208,7 @@ impl AnnouncementConsumer {
                 }
             };
 
-            log::info!("Start consuming announcement data at");
+            log::info!("Start consuming announcement data");
 
             match payload.action {
                 AnnouncementSyncAction::Create => {
@@ -265,6 +239,8 @@ impl AnnouncementConsumer {
                     }
                 }
             };
+
+            log::info!("Finished consuming announcement data");
 
             self._handle
                 .emit_all(ApplicationEvent::MediaUpdate.tag(), "emitted")

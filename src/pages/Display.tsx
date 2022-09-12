@@ -1,11 +1,13 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useContext, useEffect, useState } from "react";
+import { ApplicationErrorCode, CAROUSEL_INTERVAL } from "../constants";
+import { ApplicationContext, ApplicationContextType } from "../context";
 
-import { useCarousel } from '../hooks';
-import { subscribeToAnnouncementUpdates, tauri } from '../tauri';
+import { useCarousel } from "../hooks";
+import { subscribeToAnnouncementUpdates, tauri } from "../tauri";
 
 const Display = () => {
+  const { setError } = useContext<ApplicationContextType>(ApplicationContext);
   const [images, setImages] = useState<string[]>([]);
-  const [error, setError] = useState<ApplicationError | null>(null);
 
   const { index, startCarousel, stopCarousel } = useCarousel(CAROUSEL_INTERVAL);
 
@@ -23,12 +25,14 @@ const Display = () => {
         message: "Something went wrong when initializing the application",
       });
     }
-  }, []);
+  }, [images]);
 
   const initialize = () => {
     const unlistener = getAnnouncementMedias()
       .then(() => {
-        return subscribeToAnnouncementUpdates(() => getAnnouncementMedias());
+        return subscribeToAnnouncementUpdates(() => {
+          getAnnouncementMedias();
+        });
       })
       .then((unlistener) => {
         return unlistener;
@@ -43,13 +47,19 @@ const Display = () => {
 
   return (
     <div>
-      <div>
-        <img
-          className="image"
-          src={images.length > 0 ? images[index] : "/binus.jpeg"}
-        />
-      </div>
-
+      <img
+        style={{
+          position: "absolute",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+          display: "block",
+          width: "100vw",
+          height: "auto",
+          objectFit: "cover",
+        }}
+        src={images.length > 0 ? images[index] : "/binus.jpeg"}
+      />
     </div>
   );
 };

@@ -23,14 +23,14 @@ const useCarousel = (interval: number) => {
 
     if (isStart === true) {
       tick.current = setInterval(() => {
-        setIndex((previousIndex) => previousIndex === max ? 0 : previousIndex + 1);
+        setIndex((previousIndex) => previousIndex + 1 === max ? 0 : previousIndex + 1);
       }, interval);
     } else {
       clearInterval(tick.current);
     }
 
     return () => clearInterval(tick.current);
-  }, [isStart]);
+  }, [max, isStart]);
 
   return { index, startCarousel, stopCarousel };
 };

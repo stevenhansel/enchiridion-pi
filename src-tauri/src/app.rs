@@ -1,9 +1,9 @@
 use std::sync::{Arc, Mutex};
 
-use tauri::async_runtime;
+use tauri::{api::path::resource_dir, async_runtime, Env};
 use tauri_plugin_log::{LogTarget, LoggerBuilder};
 
-use crate::{announcement::AnnouncementConsumer, commands};
+use crate::{announcement::AnnouncementConsumer, api::EnchiridionApi, commands};
 
 pub fn run() {
     tauri::Builder::default()
@@ -11,6 +11,8 @@ pub fn run() {
             let handle = app.handle();
 
             async_runtime::spawn(async move {
+                let api = EnchiridionApi::new(resource_dir(handle.package_info(), &Env::default()).unwrap());
+
                 let redis_instance =
                     redis::Client::open("redis://:ac9772178d656aeb6533b2f05c164bade00b58c10fe30586642a319ce3431cee@45.76.147.56:6379").expect("Failed to create redis instance");
                 let redis_connection = Arc::new(Mutex::new(
@@ -19,7 +21,7 @@ pub fn run() {
                         .expect("Failed to open redis connection"),
                 ));
 
-                let consumer = AnnouncementConsumer::new(redis_connection, handle);
+                let consumer = AnnouncementConsumer::new(redis_connection, api, handle);
                 consumer.consume().await;
             });
 
