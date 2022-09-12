@@ -11,6 +11,8 @@ use tokio::time::sleep;
 
 use crate::{api::EnchiridionApi, device::Device, events::ApplicationEvent, queue::Consumer};
 
+use super::DeleteAnnouncementMediaError;
+
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub enum AnnouncementSyncAction {
@@ -119,6 +121,35 @@ impl AnnouncementConsumer {
         }
     }
 
+    async fn delete_announcement_media(
+        &self,
+        announcement_id: i32,
+    ) -> Result<(), DeleteAnnouncementMediaError> {
+        let dir = resource_dir(self._handle.package_info(), &Env::default()).unwrap();
+        let images_dir = dir.join("images");
+
+        let files: Vec<String> = fs::read_dir(images_dir.clone())
+            .unwrap()
+            .map(|file| file.unwrap().path().display().to_string())
+            .map(|path| {
+                let splitted_paths: Vec<&str> = path.split("/").collect();
+                splitted_paths[splitted_paths.len() - 1].to_string()
+            })
+            .collect();
+
+        if let Some(filename) = files
+            .into_iter()
+            .find(|file| file.contains(&announcement_id.to_string()))
+        {
+            let path = images_dir.join(filename);
+            if let Err(_) = fs::remove_file(path) {
+                return Err(DeleteAnnouncementMediaError::ApplicationError);
+            };
+        }
+
+        Ok(())
+    }
+
     fn parse_announcement_consumer_data(
         &self,
         data: Vec<StreamKey>,
@@ -161,6 +192,7 @@ impl AnnouncementConsumer {
             Some(id) => id,
             None => return Err("Unable to process action, announcement_id is null".into()),
         };
+
         match self.get_announcement_media(announcement_id).await {
             Ok(()) => Ok(()),
             Err(e) => return Err(e.to_string()),
@@ -171,7 +203,15 @@ impl AnnouncementConsumer {
         &self,
         payload: AnnouncementConsumerPayload,
     ) -> Result<(), String> {
-        Ok(())
+        let announcement_id = match payload.announcement_id {
+            Some(id) => id,
+            None => return Err("Unable to process action, announcement_id is null".into()),
+        };
+
+        match self.delete_announcement_media(announcement_id).await {
+            Ok(()) => Ok(()),
+            Err(e) => return Err(e.to_string()),
+        }
     }
 
     pub async fn process_action_type_resync(
