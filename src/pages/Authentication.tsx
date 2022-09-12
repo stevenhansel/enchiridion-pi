@@ -71,7 +71,6 @@ const Authentication = () => {
 
           <Paper
             variant="outlined"
-            elevation={6}
             sx={{
               display: "flex",
               flexDirection: "column",

@@ -18,6 +18,7 @@ const Display = () => {
       const images = await tauri.getImages();
 
       setImages(images);
+      console.log('images: ', images);
       startCarousel(images.length);
     } catch (e) {
       setError({
@@ -31,6 +32,7 @@ const Display = () => {
     const unlistener = getAnnouncementMedias()
       .then(() => {
         return subscribeToAnnouncementUpdates(() => {
+          console.log("update announcement");
           getAnnouncementMedias();
         });
       })

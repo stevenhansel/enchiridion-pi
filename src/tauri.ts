@@ -7,6 +7,10 @@ enum TauriCommands {
   Authenticate = "authenticate",
 }
 
+enum TauriEvents {
+  MediaUpdate = "media_update"
+}
+
 export type DeviceInformation = {
   id: number;
   name: string;
@@ -43,7 +47,7 @@ export const subscribeToAnnouncementUpdates = async (
   callback: () => void
 ): Promise<UnlistenFn> => {
   try {
-    const unlisten = await listen("listen_media_update", callback);
+    const unlisten = await listen(TauriEvents.MediaUpdate, callback);
 
     return unlisten;
   } catch (err) {
