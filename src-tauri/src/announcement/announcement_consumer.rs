@@ -4,7 +4,6 @@ use std::{
     time::Duration,
 };
 
-use redis::{streams::StreamKey, Value};
 use serde::{Deserialize, Serialize};
 use tauri::{api::path::resource_dir, AppHandle, Env, Manager};
 use tokio::time::sleep;
@@ -169,43 +168,9 @@ impl AnnouncementConsumer {
         Ok(())
     }
 
-    fn parse_announcement_consumer_data(
-        &self,
-        data: Vec<StreamKey>,
-    ) -> Result<AnnouncementConsumerPayload, String> {
-        let mut raw_data: Option<String> = None;
-        for res in data {
-            for id in res.ids {
-                if let Some(data) = id.map.get("data") {
-                    if let Value::Data(buffer) = data {
-                        if let Ok(value) = std::str::from_utf8(buffer) {
-                            raw_data = Some(value.to_string());
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-
-        let data = match raw_data {
-            Some(data) => data,
-            None => return Err("Something went wrong when parsing the consumer data".into()),
-        };
-
-        match serde_json::from_str::<AnnouncementConsumerPayload>(&data) {
-            Ok(payload) => Ok(payload),
-            Err(e) => {
-                return Err(format!(
-                    "Something went wrong when parsing the consumer data: {}",
-                    e.to_string()
-                ))
-            }
-        }
-    }
-
     pub async fn process_action_type_create(
         &self,
-        payload: AnnouncementConsumerPayload,
+        payload: &AnnouncementConsumerPayload,
     ) -> Result<(), String> {
         let announcement_id = match payload.announcement_id {
             Some(id) => id,
@@ -220,7 +185,7 @@ impl AnnouncementConsumer {
 
     pub async fn process_action_type_delete(
         &self,
-        payload: AnnouncementConsumerPayload,
+        payload: &AnnouncementConsumerPayload,
     ) -> Result<(), String> {
         let announcement_id = match payload.announcement_id {
             Some(id) => id,
@@ -235,17 +200,42 @@ impl AnnouncementConsumer {
 
     pub async fn process_action_type_resync(
         &self,
-        payload: AnnouncementConsumerPayload,
+        payload: &AnnouncementConsumerPayload,
     ) -> Result<(), String> {
-        let announcement_ids = match payload.announcement_ids {
+        let announcement_ids = match &payload.announcement_ids {
             Some(ids) => ids,
             None => return Err("Unable to process action, announcement_id is null".into()),
         };
 
-        match self.resync_announcements(announcement_ids).await {
+        match self.resync_announcements(announcement_ids.to_vec()).await {
             Ok(()) => Ok(()),
             Err(e) => return Err(e.to_string()),
         }
+    }
+
+    pub async fn process_announcement(
+        &self,
+        payload: &AnnouncementConsumerPayload,
+    ) -> Result<(), String> {
+        match payload.action {
+            AnnouncementSyncAction::Create => {
+                if let Err(e) = self.process_action_type_create(payload).await {
+                    return Err(e.to_string());
+                };
+            }
+            AnnouncementSyncAction::Delete => {
+                if let Err(e) = self.process_action_type_delete(payload).await {
+                    return Err(e.to_string());
+                }
+            }
+            AnnouncementSyncAction::Resync => {
+                if let Err(e) = self.process_action_type_resync(payload).await {
+                    return Err(e.to_string());
+                }
+            }
+        };
+
+        Ok(())
     }
 
     pub async fn consume(&self) {
@@ -263,58 +253,102 @@ impl AnnouncementConsumer {
             let mut consumer = Consumer::new(
                 self._redis.clone(),
                 self.queue_name_builder(device_information.id),
-                device_information.id.to_string(),
             );
 
-            let data = match consumer.consume().await {
-                Ok(res) => res,
-                Err(_) => {
-                    log::warn!("An error occurred while consuming data");
-                    continue;
-                }
-            };
-
-            let payload = match self.parse_announcement_consumer_data(data) {
-                Ok(payload) => payload,
+            let pending_message_id = match consumer.get_pending_message_id().await {
+                Ok(id) => id,
                 Err(e) => {
-                    log::warn!("Unable to parse the announcement consumer data: {}", e);
+                    log::warn!("An error occurred while getting pending message: {}", e);
                     continue;
                 }
             };
 
-            log::info!("Start consuming announcement data");
-
-            match payload.action {
-                AnnouncementSyncAction::Create => {
-                    if let Err(e) = self.process_action_type_create(payload).await {
-                        log::warn!(
-                            "An error occurred while processing announcement creation: {}",
-                            e
-                        );
-                        continue;
-                    };
-                }
-                AnnouncementSyncAction::Delete => {
-                    if let Err(e) = self.process_action_type_delete(payload).await {
-                        log::warn!(
-                            "An error occurred while processing announcement creation: {}",
-                            e
-                        );
+            if let Some(message_id) = pending_message_id {
+                let data = match consumer
+                    .read_by_message_id::<AnnouncementConsumerPayload>(message_id.to_string())
+                    .await
+                {
+                    Ok(res) => res,
+                    Err(e) => {
+                        log::warn!("An error occurred while consuming data: {}", e);
                         continue;
                     }
-                }
-                AnnouncementSyncAction::Resync => {
-                    if let Err(e) = self.process_action_type_resync(payload).await {
+                };
+
+                if data.len() == 0 {
+                    if let Err(e) = consumer.ack(message_id.to_string()).await {
                         log::warn!(
-                            "An error occurred while processing announcement creation: {}",
+                            "An error occurred while acknowledging the announcement: {}",
                             e
                         );
+                    }
+
+                    continue;
+                }
+
+                let (message_id, payload) = &data[0];
+                log::info!(
+                    "Start processing announcement with message_id: {}",
+                    message_id.to_string()
+                );
+
+                if let Err(e) = self.process_announcement(payload).await {
+                    log::warn!(
+                        "Something when wrong when processing the announcements: {}",
+                        e
+                    );
+                    continue;
+                }
+
+                if let Err(e) = consumer.ack(message_id.to_string()).await {
+                    log::warn!(
+                        "An error occurred while acknowledging the announcement: {}",
+                        e
+                    );
+                }
+
+                log::info!(
+                    "Finished processing announcement with message_id: {}",
+                    message_id.to_string()
+                );
+            } else {
+                let data = match consumer.consume::<AnnouncementConsumerPayload>().await {
+                    Ok(res) => res,
+                    Err(e) => {
+                        log::warn!("An error occurred while consuming data: {}", e);
                         continue;
                     }
+                };
+                if data.len() == 0 {
+                    continue;
                 }
-            };
 
-            log::info!("Finished consuming announcement data");
+                let (message_id, payload) = &data[0];
+                log::info!(
+                    "Start processing announcement with message_id: {}",
+                    message_id.to_string()
+                );
+
+                if let Err(e) = self.process_announcement(payload).await {
+                    log::warn!(
+                        "Something when wrong when processing the announcements: {}",
+                        e
+                    );
+                    continue;
+                }
+
+                if let Err(e) = consumer.ack(message_id.to_string()).await {
+                    log::warn!(
+                        "An error occurred while acknowledging the announcement: {}",
+                        e
+                    );
+                }
+
+                log::info!(
+                    "Finished processing announcement with message_id: {}",
+                    message_id.to_string()
+                );
+            }
 
             self._handle
                 .emit_all(ApplicationEvent::MediaUpdate.tag(), "emitted")

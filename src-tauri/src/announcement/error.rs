@@ -21,3 +21,20 @@ impl std::fmt::Display for ResyncAnnouncementsError {
         }
     }
 }
+
+#[derive(PartialEq)]
+pub enum ParseAnnouncementConsumerDataError {
+    EmptyStream(&'static str),
+    ApplicationError(String),
+}
+
+impl std::fmt::Display for ParseAnnouncementConsumerDataError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ParseAnnouncementConsumerDataError::EmptyStream(message) => write!(f, "{}", message),
+            ParseAnnouncementConsumerDataError::ApplicationError(message) => {
+                write!(f, "{}", message)
+            }
+        }
+    }
+}
