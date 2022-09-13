@@ -1,15 +1,13 @@
 use std::fs;
-use tauri::{api::path::resource_dir, Env};
 
-use crate::{api::EnchiridionApi, device::Device};
+use crate::{api::EnchiridionApi, device::Device, util::get_data_directory};
 
 #[tauri::command]
-pub fn get_images(handle: tauri::AppHandle) -> Result<Vec<String>, String> {
-    let resource_dir = resource_dir(handle.package_info(), &Env::default()).unwrap();
-    let images_dir = &resource_dir.join("images");
+pub fn get_images() -> Result<Vec<String>, String> {
+    let images_dir = get_data_directory().join("images");
 
     if !images_dir.exists() {
-        fs::create_dir_all(images_dir).expect("Error when creating image directory");
+        fs::create_dir_all(images_dir.clone()).expect("Error when creating image directory");
     }
 
     let images = fs::read_dir(images_dir).expect("Error when reading directory");
@@ -25,10 +23,8 @@ pub fn get_images(handle: tauri::AppHandle) -> Result<Vec<String>, String> {
 }
 
 #[tauri::command]
-pub fn get_device_information(handle: tauri::AppHandle) -> Result<Device, String> {
-    let resource_dir = resource_dir(handle.package_info(), &Env::default()).unwrap();
-
-    match Device::load(resource_dir) {
+pub fn get_device_information() -> Result<Device, String> {
+    match Device::load(get_data_directory()) {
         Ok(info) => Ok(info),
         Err(e) => Err(e.to_string()),
     }
@@ -36,12 +32,10 @@ pub fn get_device_information(handle: tauri::AppHandle) -> Result<Device, String
 
 #[tauri::command]
 pub async fn authenticate(
-    handle: tauri::AppHandle,
     access_key_id: String,
     secret_access_key: String,
 ) -> Result<Device, String> {
-    let directory = resource_dir(handle.package_info(), &Env::default()).unwrap();
-    let api = EnchiridionApi::new(directory.clone());
+    let api = EnchiridionApi::new(get_data_directory());
 
     let device = match api
         .authenticate(access_key_id.clone(), secret_access_key.clone())
@@ -68,7 +62,7 @@ pub async fn authenticate(
         updated_at: device.updated_at,
     };
 
-    if let Err(_) = Device::save(directory, device.clone()) {
+    if let Err(_) = Device::save(get_data_directory(), device.clone()) {
         return Err("Something when wrong when saving the device".into());
     }
 

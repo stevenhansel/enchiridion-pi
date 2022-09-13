@@ -5,10 +5,13 @@ use std::{
 };
 
 use serde::{Deserialize, Serialize};
-use tauri::{api::path::resource_dir, AppHandle, Env, Manager};
+use tauri::{AppHandle, Manager};
 use tokio::time::sleep;
 
-use crate::{api::EnchiridionApi, device::Device, events::ApplicationEvent, queue::Consumer};
+use crate::{
+    api::EnchiridionApi, device::Device, events::ApplicationEvent, queue::Consumer,
+    util::get_data_directory,
+};
 
 use super::{DeleteAnnouncementMediaError, ResyncAnnouncementsError};
 
@@ -83,8 +86,7 @@ impl AnnouncementConsumer {
             }
         };
 
-        let resource_dir = resource_dir(self._handle.package_info(), &Env::default()).unwrap();
-        let images_dir = resource_dir.join("images");
+        let images_dir = get_data_directory().join("images");
         if !images_dir.exists() {
             if let Err(e) = fs::create_dir_all(images_dir.clone()) {
                 return Err(format!(
@@ -124,8 +126,7 @@ impl AnnouncementConsumer {
         &self,
         announcement_id: i32,
     ) -> Result<(), DeleteAnnouncementMediaError> {
-        let dir = resource_dir(self._handle.package_info(), &Env::default()).unwrap();
-        let images_dir = dir.join("images");
+        let images_dir = get_data_directory().join("images");
 
         let files: Vec<String> = fs::read_dir(images_dir.clone())
             .unwrap()
@@ -240,9 +241,7 @@ impl AnnouncementConsumer {
 
     pub async fn consume(&self) {
         loop {
-            let device_information = match Device::load(
-                resource_dir(self._handle.package_info(), &Env::default()).unwrap(),
-            ) {
+            let device_information = match Device::load(get_data_directory()) {
                 Ok(info) => info,
                 Err(_) => {
                     sleep(Duration::from_millis(250)).await;

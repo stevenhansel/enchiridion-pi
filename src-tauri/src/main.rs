@@ -7,6 +7,7 @@ pub mod announcement;
 pub mod queue;
 pub mod device;
 pub mod api;
+pub mod util;
 
 pub mod app;
 pub mod commands;
