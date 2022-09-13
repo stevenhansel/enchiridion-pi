@@ -16,7 +16,10 @@ const Display = () => {
       stopCarousel();
 
       const images = await tauri.getImages();
-      if (images.length === 0) return;
+      if (images.length === 0) {
+        setImages([]);
+        return;
+      };
 
       setImages(images);
       startCarousel(images.length);
