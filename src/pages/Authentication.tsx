@@ -32,7 +32,7 @@ const Authentication = () => {
       })
       .catch(() => {
         setError({
-          code: ApplicationErrorCode,
+          code: ApplicationErrorCode.InitializationError,
           message: "Authentication failed",
         });
         setLoading(false);

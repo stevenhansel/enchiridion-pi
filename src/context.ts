@@ -1,4 +1,5 @@
 import { createContext } from "react";
+import { ApplicationError } from "./constants";
 import { DeviceInformation } from "./tauri";
 
 type SetState<T> = React.Dispatch<React.SetStateAction<T>>;
