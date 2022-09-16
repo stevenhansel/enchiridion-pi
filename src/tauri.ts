@@ -6,6 +6,7 @@ enum TauriCommands {
   GetImages = "get_images",
   GetDeviceInformation = "get_device_information",
   Link = "link",
+  Unlink = "unlink",
 }
 
 enum TauriEvents {
@@ -20,7 +21,7 @@ export type TauriErrorObject = {
 export const isTauriErrorObject = <T>(
   response: TauriCommandResponse<T>
 ): boolean => {
-  return "errorCode" in response;
+  return typeof response === "object" && "errorCode" in response;
 };
 
 export type TauriCommandResponse<T> = T | TauriErrorObject;
@@ -85,8 +86,17 @@ export const link = async (
   }
 };
 
+export const unlink = async (): Promise<TauriCommandResponse<void>> => {
+  try {
+    await invoke(TauriCommands.Unlink);
+  } catch (err) {
+    return err as TauriErrorObject;
+  }
+};
+
 export const tauri = {
   getImages,
   getDeviceInformation,
   link,
+  unlink,
 };

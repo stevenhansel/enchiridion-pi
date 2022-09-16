@@ -29,6 +29,7 @@ pub fn run() {
             commands::get_images,
             commands::get_device_information,
             commands::link,
+            commands::unlink,
         ])
         .plugin(LoggerBuilder::default().targets([
             LogTarget::LogDir,

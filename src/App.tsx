@@ -1,4 +1,4 @@
-import { CircularProgress, Snackbar } from "@mui/material";
+import { Backdrop, CircularProgress, Snackbar } from "@mui/material";
 import { useEffect, useState } from "react";
 import { ApplicationError } from "./constants";
 import { ApplicationContext } from "./context";
@@ -27,21 +27,22 @@ const App = () => {
       value={{ device, setDevice, loading, setLoading, error, setError }}
     >
       <div className="application-container">
-        {loading ? (
-          <CircularProgress />
-        ) : (
-          <>
-            {device === null ? <Authentication /> : <Display />}
+        <Backdrop
+          sx={{ color: "#fff", zIndex: (theme) => theme.zIndex.drawer + 1 }}
+          open={loading}
+        >
+          <CircularProgress color="inherit" />
+        </Backdrop>
 
-            <Snackbar
-              anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-              open={!!error}
-              onClose={() => setError(null)}
-              message={error?.message}
-              key="application-error"
-            />
-          </>
-        )}
+        {device === null ? <Authentication /> : <Display />}
+
+        <Snackbar
+          anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+          open={!!error}
+          onClose={() => setError(null)}
+          message={error?.message}
+          key="application-error"
+        />
       </div>
     </ApplicationContext.Provider>
   );

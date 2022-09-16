@@ -115,14 +115,20 @@ impl EnchiridionApi {
         }
     }
 
-    pub async fn unlink(&self) -> Result<(), ApiError> {
-        self.client
+    pub async fn unlink(&self) -> Result<APIResponse<()>, ApiError> {
+        let response = self
+            .client
             .put(format!("{}/v1/unlink", BASE_URL))
             .headers(self.get_auth_headers()?)
             .send()
             .await?;
 
-        Ok(())
+        match response.status() {
+            StatusCode::NO_CONTENT => Ok(APIResponse::Success(())),
+            _ => Ok(APIResponse::Error(
+                response.json::<APIErrorResponse>().await?,
+            )),
+        }
     }
 
     pub async fn me_with_keys(

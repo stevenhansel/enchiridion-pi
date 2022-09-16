@@ -154,3 +154,26 @@ pub async fn link(
 
     Ok(device)
 }
+
+#[tauri::command]
+pub async fn unlink() -> Result<(), CommandError> {
+    let api = EnchiridionApi::new(get_data_directory());
+
+    match api.unlink().await {
+        Ok(response) => {
+            if let APIResponse::Error(error) = response {
+                return Err(error.into());
+            }
+        }
+        Err(e) => {
+            println!("{:?}", e);
+            return Err(CommandError::application_error(String::from(
+                "Something when wrong when linking the device",
+            )));
+        }
+    };
+
+    ApplicationConfig::load(get_data_directory())?.remove()?;
+
+    Ok(())
+}

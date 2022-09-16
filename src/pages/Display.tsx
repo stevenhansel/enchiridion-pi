@@ -1,28 +1,35 @@
+import { Box } from "@mui/system";
 import { useCallback, useContext, useEffect, useState } from "react";
 import { ApplicationErrorCode, CAROUSEL_INTERVAL } from "../constants";
 import { ApplicationContext, ApplicationContextType } from "../context";
 
 import { useCarousel } from "../hooks";
 import { subscribeToAnnouncementUpdates, tauri } from "../tauri";
+import ApplicationSettings from "./ApplicationSettings";
 
 const Display = () => {
-  const { setError } = useContext<ApplicationContextType>(ApplicationContext);
+  const { setLoading, setError } =
+    useContext<ApplicationContextType>(ApplicationContext);
   const [images, setImages] = useState<string[]>([]);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const { index, startCarousel, stopCarousel } = useCarousel(CAROUSEL_INTERVAL);
 
   const getAnnouncementMedias = async () => {
     try {
+      setLoading(true);
       stopCarousel();
 
       const images = await tauri.getImages();
       if (images.length === 0) {
         setImages([]);
+        setLoading(false);
         return;
-      };
+      }
 
       setImages(images);
       startCarousel(images.length);
+      setLoading(false);
     } catch (e) {
       setError({
         code: ApplicationErrorCode.InitializationError,
@@ -31,7 +38,7 @@ const Display = () => {
     }
   };
 
-  const initialize = () => {
+  const initializeAnnouncementMedia = () => {
     const unlistener = getAnnouncementMedias()
       .then(() => {
         return subscribeToAnnouncementUpdates(() => {
@@ -45,12 +52,30 @@ const Display = () => {
     return unlistener;
   };
 
+  const handleSettingsKeydownEvent = useCallback((event: KeyboardEvent) => {
+    if (event.key === "Escape") {
+      setIsSettingsOpen(true);
+    }
+  }, []);
+
   useEffect(() => {
-    initialize();
+    initializeAnnouncementMedia();
+
+    document.addEventListener("keydown", handleSettingsKeydownEvent);
+    return () => {
+      document.removeEventListener("keydown", handleSettingsKeydownEvent);
+    };
   }, []);
 
   return (
-    <div>
+    <Box
+      sx={{
+        height: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
       {images.length > 0 ? (
         <img
           style={{
@@ -80,7 +105,12 @@ const Display = () => {
           src="/binus.jpeg"
         />
       )}
-    </div>
+
+      <ApplicationSettings
+        open={isSettingsOpen}
+        handleClose={() => setIsSettingsOpen(false)}
+      />
+    </Box>
   );
 };
 

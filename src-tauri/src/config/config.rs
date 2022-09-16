@@ -76,11 +76,18 @@ impl ApplicationConfig {
             Err(_) => return Ok(ApplicationConfig::default(directory)),
         };
 
-        serde_json::from_reader::<File, ApplicationConfig>(file).or_else(|_| {
-            Err(ApplicationConfigError::ApplicationError(
-                "Something when wrong when loading the application configuration",
-            ))
-        })
+        let mut config = match serde_json::from_reader::<File, ApplicationConfig>(file) {
+            Ok(config) => config,
+            Err(_) => {
+                return Err(ApplicationConfigError::ApplicationError(
+                    "Something when wrong when loading the application configuration",
+                ))
+            }
+        };
+
+        config.directory = directory;
+
+        Ok(config)
     }
 
     pub fn save(&self) -> Result<(), ApplicationConfigError> {
@@ -91,6 +98,17 @@ impl ApplicationConfig {
                 "Something when wrong when writing the file",
             ));
         };
+
+        Ok(())
+    }
+
+    pub fn remove(&self) -> Result<(), ApplicationConfigError> {
+        if let Err(e) = fs::remove_dir_all(self.directory.clone()) {
+            println!("e: {:?}", e);
+            return Err(ApplicationConfigError::ApplicationError(
+                "Unable to find the configuration file",
+            ));
+        }
 
         Ok(())
     }
