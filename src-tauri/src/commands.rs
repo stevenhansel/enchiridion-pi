@@ -165,10 +165,9 @@ pub async fn unlink() -> Result<(), CommandError> {
                 return Err(error.into());
             }
         }
-        Err(e) => {
-            println!("{:?}", e);
+        Err(_) => {
             return Err(CommandError::application_error(String::from(
-                "Something when wrong when linking the device",
+                "Something when wrong when unlinking the device",
             )));
         }
     };
