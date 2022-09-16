@@ -1,9 +1,59 @@
 use std::fs;
 
-use crate::{api::EnchiridionApi, device::Device, util::get_data_directory};
+use serde::Serialize;
+
+use crate::{
+    api::{APIErrorResponse, APIResponse, EnchiridionApi},
+    config::{
+        ApplicationConfig, ApplicationConfigError, AuthenticationKey, DeviceBuildingInformation,
+        DeviceFloorInformation, DeviceInformation,
+    },
+    util::get_data_directory,
+};
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CommandError {
+    error_code: String,
+    messages: Vec<String>,
+}
+
+impl CommandError {
+    pub fn new(error_code: String, messages: Vec<String>) -> Self {
+        CommandError {
+            error_code,
+            messages,
+        }
+    }
+
+    pub fn application_error(message: String) -> Self {
+        CommandError {
+            error_code: "APPLICATION_ERROR".into(),
+            messages: vec![message],
+        }
+    }
+}
+
+impl From<APIErrorResponse> for CommandError {
+    fn from(err: APIErrorResponse) -> Self {
+        CommandError {
+            error_code: err.error_code,
+            messages: err.messages,
+        }
+    }
+}
+
+impl From<ApplicationConfigError> for CommandError {
+    fn from(err: ApplicationConfigError) -> Self {
+        CommandError {
+            error_code: err.code().to_string(),
+            messages: vec![err.to_string()],
+        }
+    }
+}
 
 #[tauri::command]
-pub fn get_images() -> Result<Vec<String>, String> {
+pub fn get_images() -> Result<Vec<String>, CommandError> {
     let images_dir = get_data_directory().join("images");
 
     if !images_dir.exists() {
@@ -23,47 +73,83 @@ pub fn get_images() -> Result<Vec<String>, String> {
 }
 
 #[tauri::command]
-pub fn get_device_information() -> Result<Device, String> {
-    match Device::load(get_data_directory()) {
-        Ok(info) => Ok(info),
-        Err(e) => Err(e.to_string()),
+pub fn get_device_information() -> Result<DeviceInformation, CommandError> {
+    let config = match ApplicationConfig::load(get_data_directory()) {
+        Ok(config) => config,
+        Err(e) => return Err(CommandError::new(e.code().to_string(), vec![e.to_string()])),
+    };
+
+    match config.get_device() {
+        Ok(device) => Ok(device),
+        Err(e) => Err(CommandError::new(e.code().to_string(), vec![e.to_string()])),
     }
 }
 
 #[tauri::command]
-pub async fn authenticate(
+pub async fn link(
     access_key_id: String,
     secret_access_key: String,
-) -> Result<Device, String> {
+) -> Result<DeviceInformation, CommandError> {
     let api = EnchiridionApi::new(get_data_directory());
 
-    let device = match api
-        .authenticate(access_key_id.clone(), secret_access_key.clone())
+    match api
+        .link(access_key_id.clone(), secret_access_key.clone())
         .await
     {
-        Ok(device) => device,
+        Ok(response) => {
+            if let APIResponse::Error(error) = response {
+                return Err(error.into());
+            }
+        }
         Err(_) => {
-            return Err("Authentication failed".into());
+            return Err(CommandError::application_error(String::from(
+                "Something when wrong when linking the device",
+            )))
         }
     };
 
-    if let Err(_) = api.save_auth_keys(access_key_id.clone(), secret_access_key.clone()) {
-        return Err("Something when wrong when authenticating".into());
+    let device = match api
+        .me_with_keys(access_key_id.clone(), secret_access_key.clone())
+        .await
+    {
+        Ok(response) => match response {
+            APIResponse::Success(device) => device,
+            APIResponse::Error(error) => return Err(error.into()),
+        },
+        Err(_) => {
+            return Err(CommandError::application_error(String::from(
+                "Something when wrong when getting the device information",
+            )))
+        }
     };
 
-    let device = Device {
+    let device = DeviceInformation {
         id: device.id,
         name: device.name,
-        location: device.location,
-        floor_id: device.floor_id,
-        building_id: device.building_id,
         description: device.description,
+        location: device.location.text,
+        floor: DeviceFloorInformation {
+            id: device.location.floor.id,
+            name: device.location.floor.name,
+        },
+        building: DeviceBuildingInformation {
+            id: device.location.building.id,
+            name: device.location.building.name,
+            color: device.location.building.color,
+        },
         created_at: device.created_at,
         updated_at: device.updated_at,
     };
 
-    if let Err(_) = Device::save(get_data_directory(), device.clone()) {
-        return Err("Something when wrong when saving the device".into());
+    // Watchout saving auth keys and device individually with lead to data race (in one process)
+    if let Err(e) = ApplicationConfig::new(
+        get_data_directory(),
+        AuthenticationKey::new(access_key_id, secret_access_key),
+        device.clone(),
+    )
+    .save()
+    {
+        return Err(e.into());
     }
 
     Ok(device)

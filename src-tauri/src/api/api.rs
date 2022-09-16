@@ -1,12 +1,27 @@
-use std::{fs, path};
+use std::path;
 
-use reqwest::header::{HeaderMap, HeaderValue};
+use reqwest::{
+    header::{HeaderMap, HeaderValue},
+    StatusCode,
+};
 use serde::{Deserialize, Serialize};
 
-use super::definition::{GetAnnouncementMediaResponse, MeResponse};
+use super::definition::{GetAnnouncementMediaResponse, MeBody, MeResponse};
+use crate::config::{ApplicationConfig, ApplicationConfigError};
 
 static BASE_URL: &str = "https://enchiridion.stevenhansel.com/device";
-static AUTH_KEYS_FILENAME: &str = "auth-keys.json";
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct APIErrorResponse {
+    pub error_code: String,
+    pub messages: Vec<String>,
+}
+
+pub enum APIResponse<T> {
+    Success(T),
+    Error(APIErrorResponse),
+}
 
 #[derive(Debug)]
 pub enum ApiError {
@@ -18,6 +33,24 @@ pub enum ApiError {
 impl From<reqwest::Error> for ApiError {
     fn from(err: reqwest::Error) -> Self {
         ApiError::ReqwestError(err)
+    }
+}
+
+impl From<std::io::Error> for ApiError {
+    fn from(_err: std::io::Error) -> Self {
+        ApiError::NotAuthenticated("Failed to load application configuration")
+    }
+}
+
+impl From<ApplicationConfigError> for ApiError {
+    fn from(err: ApplicationConfigError) -> Self {
+        match err {
+            ApplicationConfigError::ConfigurationUnavailable(message)
+            | ApplicationConfigError::AuthenticationUnavailable(message) => {
+                ApiError::NotAuthenticated(message)
+            }
+            _ => ApiError::ApplicationError,
+        }
     }
 }
 
@@ -40,53 +73,12 @@ impl EnchiridionApi {
         EnchiridionApi { client, directory }
     }
 
-    fn load_auth_keys(&self) -> Result<AuthKeys, ApiError> {
-        let file_path = self.directory.join(AUTH_KEYS_FILENAME);
-        if !file_path.exists() {
-            return Err(ApiError::NotAuthenticated(""));
-        }
-
-        let raw = match fs::read_to_string(file_path) {
-            Ok(data) => data,
-            Err(_) => return Err(ApiError::ApplicationError),
-        };
-
-        match serde_json::from_str::<AuthKeys>(raw.as_str()) {
-            Ok(data) => Ok(data),
-            Err(_) => Err(ApiError::ApplicationError),
-        }
-    }
-
-    pub fn save_auth_keys(
-        &self,
-        access_key_id: String,
-        secret_access_key: String,
-    ) -> Result<(), ApiError> {
-        let file_path = self.directory.join(AUTH_KEYS_FILENAME);
-        if !file_path.exists() {
-            if let Err(_) = fs::File::create(file_path.clone()) {
-                return Err(ApiError::ApplicationError);
-            };
-        }
-
-        let data = AuthKeys {
-            access_key_id,
-            secret_access_key,
-        };
-
-        let deserialized_data = match serde_json::to_string(&data) {
-            Ok(raw) => raw,
-            Err(_) => return Err(ApiError::ApplicationError),
-        };
-
-        match fs::write(file_path, deserialized_data) {
-            Ok(_) => Ok(()),
-            Err(_) => Err(ApiError::ApplicationError),
-        }
-    }
-
     pub fn get_auth_headers(&self) -> Result<HeaderMap, ApiError> {
-        let keys = self.load_auth_keys()?;
+        let keys = match ApplicationConfig::load(self.directory.clone())?.auth {
+            Some(keys) => keys,
+            None => return Err(ApiError::NotAuthenticated("Device is not linked")),
+        };
+
         let mut headers = HeaderMap::new();
         headers.insert(
             "access-key-id",
@@ -100,11 +92,44 @@ impl EnchiridionApi {
         Ok(headers)
     }
 
-    pub async fn authenticate(
+    pub async fn link(
         &self,
         access_key_id: String,
         secret_access_key: String,
-    ) -> Result<MeResponse, ApiError> {
+    ) -> Result<APIResponse<()>, ApiError> {
+        let response = self
+            .client
+            .put(format!("{}/v1/link", BASE_URL))
+            .json(&MeBody {
+                access_key_id,
+                secret_access_key,
+            })
+            .send()
+            .await?;
+
+        match response.status() {
+            StatusCode::NO_CONTENT => Ok(APIResponse::Success(())),
+            _ => Ok(APIResponse::Error(
+                response.json::<APIErrorResponse>().await?,
+            )),
+        }
+    }
+
+    pub async fn unlink(&self) -> Result<(), ApiError> {
+        self.client
+            .put(format!("{}/v1/unlink", BASE_URL))
+            .headers(self.get_auth_headers()?)
+            .send()
+            .await?;
+
+        Ok(())
+    }
+
+    pub async fn me_with_keys(
+        &self,
+        access_key_id: String,
+        secret_access_key: String,
+    ) -> Result<APIResponse<MeResponse>, ApiError> {
         let mut headers = HeaderMap::new();
         headers.insert(
             "access-key-id",
@@ -115,25 +140,35 @@ impl EnchiridionApi {
             HeaderValue::from_str(&secret_access_key).unwrap(),
         );
 
-        Ok(self
+        let response = self
             .client
             .get(format!("{}/v1/me", BASE_URL))
             .headers(headers)
             .send()
-            .await?
-            .json::<MeResponse>()
-            .await?)
+            .await?;
+
+        match response.status() {
+            StatusCode::OK => Ok(APIResponse::Success(response.json::<MeResponse>().await?)),
+            _ => Ok(APIResponse::Error(
+                response.json::<APIErrorResponse>().await?,
+            )),
+        }
     }
 
-    pub async fn me(&self) -> Result<MeResponse, ApiError> {
-        Ok(self
+    pub async fn me(&self) -> Result<APIResponse<MeResponse>, ApiError> {
+        let response = self
             .client
             .get(format!("{}/v1/me", BASE_URL))
             .headers(self.get_auth_headers()?)
             .send()
-            .await?
-            .json::<MeResponse>()
-            .await?)
+            .await?;
+
+        match response.status() {
+            StatusCode::OK => Ok(APIResponse::Success(response.json::<MeResponse>().await?)),
+            _ => Ok(APIResponse::Error(
+                response.json::<APIErrorResponse>().await?,
+            )),
+        }
     }
 
     pub async fn get_announcement_media(

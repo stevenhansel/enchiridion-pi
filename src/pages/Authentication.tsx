@@ -8,7 +8,12 @@ import {
   Typography,
   CircularProgress,
 } from "@mui/material";
-import { tauri } from "../tauri";
+import {
+  DeviceInformation,
+  isTauriErrorObject,
+  tauri,
+  TauriErrorObject,
+} from "../tauri";
 import { ApplicationContext, ApplicationContextType } from "../context";
 import { ApplicationErrorCode } from "../constants";
 
@@ -21,22 +26,25 @@ const Authentication = () => {
   const [accessKeyId, setAccessKeyId] = useState("");
   const [secretAccessKey, setSecretAccessKey] = useState("");
 
-  const authenticate = useCallback(() => {
-    setLoading(true);
+  const link = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await tauri.link(accessKeyId, secretAccessKey);
+      if (isTauriErrorObject<DeviceInformation>(response)) {
+        let { errorCode, messages } = response as TauriErrorObject;
+        setError({ code: errorCode, message: messages[0] });
+        setLoading(false);
+        return;
+      } 
 
-    tauri
-      .authenticate(accessKeyId, secretAccessKey)
-      .then((device) => {
-        setDevice(device);
-        setLoading(false);
-      })
-      .catch(() => {
-        setError({
-          code: ApplicationErrorCode.InitializationError,
-          message: "Authentication failed",
-        });
-        setLoading(false);
+      setDevice(response as DeviceInformation);
+    } catch {
+      setError({
+        code: ApplicationErrorCode.InitializationError,
+        message: "Authentication failed",
       });
+      setLoading(false);
+    }
   }, [accessKeyId, secretAccessKey]);
 
   return (
@@ -98,7 +106,7 @@ const Authentication = () => {
                 onChange={(e) => setSecretAccessKey(e.target.value)}
               />
             </Box>
-            <Button variant="outlined" onClick={authenticate}>
+            <Button variant="outlined" onClick={link}>
               Authenticate
             </Button>
           </Paper>

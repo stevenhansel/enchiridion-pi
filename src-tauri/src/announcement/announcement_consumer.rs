@@ -9,7 +9,7 @@ use tauri::{AppHandle, Manager};
 use tokio::time::sleep;
 
 use crate::{
-    api::EnchiridionApi, device::Device, events::ApplicationEvent, queue::Consumer,
+    api::EnchiridionApi, config::ApplicationConfig, events::ApplicationEvent, queue::Consumer,
     util::get_data_directory,
 };
 
@@ -241,9 +241,16 @@ impl AnnouncementConsumer {
 
     pub async fn consume(&self) {
         loop {
-            let device_information = match Device::load(get_data_directory()) {
-                Ok(info) => info,
+            let config = match ApplicationConfig::load(get_data_directory()) {
+                Ok(config) => config,
                 Err(_) => {
+                    sleep(Duration::from_millis(250)).await;
+                    continue;
+                }
+            };
+            let device_information = match config.device {
+                Some(device) => device,
+                None => {
                     sleep(Duration::from_millis(250)).await;
                     continue;
                 }

@@ -28,7 +28,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::get_images,
             commands::get_device_information,
-            commands::authenticate,
+            commands::link,
         ])
         .plugin(LoggerBuilder::default().targets([
             LogTarget::LogDir,
