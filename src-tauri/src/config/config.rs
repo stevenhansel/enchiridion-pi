@@ -103,8 +103,7 @@ impl ApplicationConfig {
     }
 
     pub fn remove(&self) -> Result<(), ApplicationConfigError> {
-        if let Err(e) = fs::remove_dir_all(self.directory.clone()) {
-            println!("e: {:?}", e);
+        if let Err(_) = fs::remove_dir_all(self.directory.clone()) {
             return Err(ApplicationConfigError::ApplicationError(
                 "Unable to find the configuration file",
             ));

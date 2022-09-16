@@ -36,7 +36,6 @@ const ApplicationSettings = ({ open, handleClose }: Props) => {
       setLoading(false);
       setDevice(null);
     } catch (err) {
-      console.log("err: ", err);
       setError({
         code: ApplicationErrorCode.ApplicationError,
         message: "Something when wrong when unlinking the device",
