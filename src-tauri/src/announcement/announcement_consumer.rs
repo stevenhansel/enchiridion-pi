@@ -244,14 +244,14 @@ impl AnnouncementConsumer {
             let config = match ApplicationConfig::load(get_data_directory()) {
                 Ok(config) => config,
                 Err(_) => {
-                    sleep(Duration::from_millis(250)).await;
+                    sleep(Duration::from_millis(3000)).await;
                     continue;
                 }
             };
             let device_information = match config.device {
                 Some(device) => device,
                 None => {
-                    sleep(Duration::from_millis(250)).await;
+                    sleep(Duration::from_millis(3000)).await;
                     continue;
                 }
             };
