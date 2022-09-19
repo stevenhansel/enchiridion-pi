@@ -42,7 +42,7 @@
       "targets": "deb"
     },
     "security": {
-      "csp": "default-src 'self'; media-src 'self'; asset:",
+      "csp": "default-src 'self'; media-src 'self' 'unsafe-inline'; style: 'self' 'unsafe-inline' asset:",
       "dangerousDisableAssetCspModification": true
     },
     "updater": {
