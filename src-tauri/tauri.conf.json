@@ -42,7 +42,8 @@
       "targets": "deb"
     },
     "security": {
-      "csp": "default-src: 'self'; media-src 'self' asset:"
+      "csp": "default-src 'self'; media-src 'self'; asset:",
+      "dangerousDisableAssetCspModification": true
     },
     "updater": {
       "active": false
@@ -50,10 +51,10 @@
     "windows": [
       {
         "fullscreen": true,
-        "height": 600,
-        "resizable": true,
+        "resizable": false,
         "title": "Enchiridion",
-        "width": 800
+        "width": 800,
+        "height": 600
       }
     ]
   }
