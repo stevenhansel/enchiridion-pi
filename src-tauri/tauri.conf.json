@@ -13,9 +13,8 @@
   "tauri": {
     "allowlist": {
       "all": true,
-      "fs": {
-      },
       "protocol": {
+        "all": false,
         "asset": true,
         "assetScope": ["*"]
       }
@@ -42,7 +41,7 @@
       "targets": "deb"
     },
     "security": {
-      "csp": "default-src 'self'; media-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' 'unsafe-inline'; asset:",
+      "csp": "default-src 'self'; media-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' 'unsafe-inline'; asset: https://asset.localhost;",
       "dangerousDisableAssetCspModification": true
     },
     "updater": {
