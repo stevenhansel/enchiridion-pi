@@ -35,7 +35,7 @@ const Authentication = () => {
         setError({ code: errorCode, message: messages[0] });
         setLoading(false);
         return;
-      } 
+      }
 
       setDevice(response as DeviceInformation);
     } catch {
@@ -108,6 +108,12 @@ const Authentication = () => {
             </Box>
             <Button variant="outlined" onClick={link}>
               Authenticate
+            </Button>
+            <Button
+              variant="outlined"
+              onClick={async () => console.log(await tauri.getImages())}
+            >
+              test get images
             </Button>
           </Paper>
         </>
