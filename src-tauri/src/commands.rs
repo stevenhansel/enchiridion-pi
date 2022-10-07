@@ -1,5 +1,6 @@
 use std::fs;
 
+use online::check;
 use serde::Serialize;
 
 use crate::{
@@ -176,3 +177,13 @@ pub async fn unlink() -> Result<(), CommandError> {
 
     Ok(())
 }
+
+#[tauri::command]
+pub async fn is_network_connected() -> bool {
+    if let Ok(()) = check(None) {
+        return true;
+    } else {
+        return false;
+    }
+}
+

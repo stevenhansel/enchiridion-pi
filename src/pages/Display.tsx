@@ -1,10 +1,9 @@
 import { Box } from "@mui/system";
 import { Typography } from "@mui/material";
 import { useCallback, useContext, useEffect, useState } from "react";
-import { ApplicationErrorCode, CAROUSEL_INTERVAL } from "../constants";
+import { ApplicationErrorCode } from "../constants";
 import { ApplicationContext, ApplicationContextType } from "../context";
 
-import { useCarousel } from "../hooks";
 import {
   listenToMediaUpdateStart,
   listenToMediaUpdateEnd,
@@ -13,28 +12,32 @@ import {
 import ApplicationSettings from "./ApplicationSettings";
 
 const Display = () => {
-  const { setLoading, setError } =
-    useContext<ApplicationContextType>(ApplicationContext);
+  const {
+    setLoading,
+    setError,
+    carousel: {
+      index,
+      isPaused,
+      startCarousel,
+      stopCarousel,
+      pauseCarousel,
+      continueCarousel,
+      updateMax,
+    },
+  } = useContext<ApplicationContextType>(ApplicationContext);
   const [images, setImages] = useState<string[]>([]);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
-  const { index, startCarousel, stopCarousel } = useCarousel(CAROUSEL_INTERVAL);
-
   const getAnnouncementMedias = async () => {
     try {
-      setLoading(true);
-      stopCarousel();
-
       const images = await tauri.getImages();
       if (images.length === 0) {
         setImages([]);
-        setLoading(false);
         return;
       }
 
       setImages(images);
-      startCarousel(images.length);
-      setLoading(false);
+      updateMax(images.length);
     } catch (e) {
       setError({
         code: ApplicationErrorCode.InitializationError,
@@ -45,13 +48,17 @@ const Display = () => {
 
   const initializeAnnouncementMedia = () => {
     getAnnouncementMedias().then(() => {
+      startCarousel();
+
       listenToMediaUpdateStart(() => {
         setLoading(true);
+        pauseCarousel();
       });
 
       listenToMediaUpdateEnd(async () => {
         await getAnnouncementMedias();
         setLoading(false);
+        continueCarousel();
       });
     });
   };
@@ -68,6 +75,7 @@ const Display = () => {
     document.addEventListener("keydown", handleSettingsKeydownEvent);
     return () => {
       document.removeEventListener("keydown", handleSettingsKeydownEvent);
+      stopCarousel();
     };
   }, []);
 
@@ -125,6 +133,18 @@ const Display = () => {
           </div>
         </>
       )}
+
+      <div style={{ position: 'absolute', bottom: 5, right: 20 }}>
+        <button
+          onClick={() => {
+            if (isPaused) {
+              continueCarousel();
+            } else {
+              pauseCarousel();
+            }
+          }}
+        >{isPaused ? "continue" : "pause"}</button>
+      </div>
 
       <ApplicationSettings
         open={isSettingsOpen}

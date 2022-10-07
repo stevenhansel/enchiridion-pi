@@ -25,6 +25,7 @@ reqwest = { version = "0.11.11", features = ["json"] }
 log = "0.4.17"
 env_logger = "0.9.0"
 chrono = "0.4.22"
+online = "4.0.0"
 
 [dependencies.tauri-plugin-log]
 git = "https://github.com/tauri-apps/tauri-plugin-log"

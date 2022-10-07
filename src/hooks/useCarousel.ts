@@ -1,38 +1,72 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+
+export type CarouselState = {
+  index: number;
+  isStart: boolean;
+  isPaused: boolean;
+  startCarousel: () => void;
+  stopCarousel: () => void;
+  pauseCarousel: () => void;
+  continueCarousel: () => void;
+  updateMax: (max: number) => void;
+};
+
+export const defaultCarouselState = (): CarouselState => ({
+  index: 0,
+  isStart: false,
+  isPaused: false,
+  startCarousel: () => {},
+  stopCarousel: () => {},
+  pauseCarousel: () => {},
+  continueCarousel: () => {},
+  updateMax: (_max: number) => {},
+});
 
 const useCarousel = (interval: number) => {
   const [index, setIndex] = useState(0);
-  const [max, setMax] = useState<number|null>(null);
+  const [max, setMax] = useState<number | null>(null);
   const [isStart, setIsStart] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
 
-  const isFirstStart = useRef(true)
   const tick = useRef(0);
 
-  const startCarousel = (newMax: number) => {
-    setMax(newMax);
-    setIsStart(true);
-  };
+  const startCarousel = useCallback(() => setIsStart(true), []);
 
-  const stopCarousel = () => setIsStart(false);
+  const stopCarousel = useCallback(() => setIsStart(false), []);
+
+  const pauseCarousel = useCallback(() => setIsPaused(true), []);
+
+  const continueCarousel = useCallback(() => setIsPaused(false), []);
+
+  const updateMax = useCallback((max: number) => setMax(max), []);
 
   useEffect(() => {
-    if (isFirstStart.current === true) {
-      isFirstStart.current = false;
-      return;
-    }
+    if (!isStart) return;
 
-    if (isStart === true) {
+    if (!tick.current && !isPaused) {
       tick.current = setInterval(() => {
-        setIndex((previousIndex) => previousIndex + 1 === max ? 0 : previousIndex + 1);
+        setIndex((previousIndex) =>
+          previousIndex + 1 === max ? 0 : previousIndex + 1
+        );
       }, interval);
     } else {
       clearInterval(tick.current);
+      tick.current = 0;
     }
 
     return () => clearInterval(tick.current);
-  }, [max, isStart]);
+  }, [max, isStart, isPaused]);
 
-  return { index, startCarousel, stopCarousel };
+  return {
+    index,
+    isStart,
+    isPaused,
+    startCarousel,
+    stopCarousel,
+    pauseCarousel,
+    continueCarousel,
+    updateMax,
+  };
 };
 
 export default useCarousel;

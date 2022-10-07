@@ -1,5 +1,6 @@
 import { createContext } from "react";
 import { ApplicationError } from "./constants";
+import { CarouselState, defaultCarouselState } from "./hooks";
 import { DeviceInformation } from "./tauri";
 
 type SetState<T> = React.Dispatch<React.SetStateAction<T>>;
@@ -13,6 +14,11 @@ export type ApplicationContextType = {
 
   error: ApplicationError | null;
   setError: SetState<ApplicationError | null>;
+
+  isNetworkConnected: boolean;
+  setIsNetworkConnected: SetState<boolean>;
+
+  carousel: CarouselState;
 };
 
 export const ApplicationContext = createContext<ApplicationContextType>({
@@ -24,5 +30,9 @@ export const ApplicationContext = createContext<ApplicationContextType>({
 
   error: null,
   setError: () => {},
-});
 
+  isNetworkConnected: true,
+  setIsNetworkConnected: () => {},
+
+  carousel: defaultCarouselState(),
+});

@@ -7,6 +7,7 @@ enum TauriCommands {
   GetDeviceInformation = "get_device_information",
   Link = "link",
   Unlink = "unlink",
+  IsNetworkConnected = "is_network_connected",
 }
 
 enum TauriEvents {
@@ -107,9 +108,15 @@ export const unlink = async (): Promise<TauriCommandResponse<void>> => {
   }
 };
 
+export const isNetworkConnected = async () => {
+  const isNetworkConnected = await invoke(TauriCommands.IsNetworkConnected);
+  return isNetworkConnected as boolean;
+};
+
 export const tauri = {
   getImages,
   getDeviceInformation,
   link,
   unlink,
+  isNetworkConnected,
 };

@@ -70,6 +70,7 @@ dependencies = [
  "deadpool-redis",
  "env_logger",
  "log",
+ "online",
  "redis",
  "reqwest",
  "serde",
@@ -1930,6 +1931,12 @@ name = "once_cell"
 version = "1.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2f7254b99e31cad77da24b08ebf628882739a608578bb1bcdfc1f9c21260d7c0"
+
+[[package]]
+name = "online"
+version = "4.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "92f3da77f57f551a8f50567bf3c2b2883716d7b1ded55ee3f5e0d1ad549df56b"
 
 [[package]]
 name = "open"

@@ -1,1 +1,5 @@
-export { default as useCarousel } from './useCarousel';
+export {
+  default as useCarousel,
+  defaultCarouselState,
+  type CarouselState,
+} from "./useCarousel";

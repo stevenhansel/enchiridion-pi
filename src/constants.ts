@@ -11,5 +11,5 @@ export type ApplicationError = {
   message: string,
 }
 
-export const CAROUSEL_INTERVAL = 3000;
-
+export const CAROUSEL_INTERVAL = 1000;
+export const NETWORK_CONNECTION_CHECK_MS = 3000;

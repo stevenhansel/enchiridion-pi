@@ -30,6 +30,7 @@ pub fn run() {
             commands::get_device_information,
             commands::link,
             commands::unlink,
+            commands::is_network_connected,
         ])
         .plugin(LoggerBuilder::default().targets([
             LogTarget::LogDir,
