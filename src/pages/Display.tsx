@@ -4,7 +4,11 @@ import { ApplicationErrorCode, CAROUSEL_INTERVAL } from "../constants";
 import { ApplicationContext, ApplicationContextType } from "../context";
 
 import { useCarousel } from "../hooks";
-import { subscribeToAnnouncementUpdates, tauri } from "../tauri";
+import {
+  listenToMediaUpdateStart,
+  listenToMediaUpdateEnd,
+  tauri,
+} from "../tauri";
 import ApplicationSettings from "./ApplicationSettings";
 
 const Display = () => {
@@ -39,17 +43,16 @@ const Display = () => {
   };
 
   const initializeAnnouncementMedia = () => {
-    const unlistener = getAnnouncementMedias()
-      .then(() => {
-        return subscribeToAnnouncementUpdates(() => {
-          getAnnouncementMedias();
-        });
-      })
-      .then((unlistener) => {
-        return unlistener;
+    getAnnouncementMedias().then(() => {
+      listenToMediaUpdateStart(() => {
+        setLoading(true);
       });
 
-    return unlistener;
+      listenToMediaUpdateEnd(async () => {
+        await getAnnouncementMedias();
+        setLoading(false);
+      });
+    });
   };
 
   const handleSettingsKeydownEvent = useCallback((event: KeyboardEvent) => {

@@ -10,7 +10,8 @@ enum TauriCommands {
 }
 
 enum TauriEvents {
-  MediaUpdate = "media_update",
+  MediaUpdateStart = "media_update_start",
+  MediaUpdateEnd = "media_update_end",
 }
 
 export type TauriErrorObject = {
@@ -58,11 +59,23 @@ export const getDeviceInformation = async (): Promise<DeviceInformation> => {
   }
 };
 
-export const subscribeToAnnouncementUpdates = async (
+export const listenToMediaUpdateStart = async (
   callback: () => void
 ): Promise<UnlistenFn> => {
   try {
-    const unlisten = await listen(TauriEvents.MediaUpdate, callback);
+    const unlisten = await listen(TauriEvents.MediaUpdateStart, callback);
+
+    return unlisten;
+  } catch (err) {
+    throw err;
+  }
+};
+
+export const listenToMediaUpdateEnd = async (
+  callback: () => void
+): Promise<UnlistenFn> => {
+  try {
+    const unlisten = await listen(TauriEvents.MediaUpdateEnd, callback);
 
     return unlisten;
   } catch (err) {

@@ -292,6 +292,11 @@ impl AnnouncementConsumer {
                     continue;
                 }
 
+                self._handle
+                    .emit_all(ApplicationEvent::MediaUpdateStart.tag(), "emitted")
+                    .expect("Error when emitting");
+
+
                 let (message_id, payload) = &data[0];
                 log::info!(
                     "Start processing announcement with message_id: {}",
@@ -329,6 +334,10 @@ impl AnnouncementConsumer {
                     continue;
                 }
 
+                self._handle
+                    .emit_all(ApplicationEvent::MediaUpdateStart.tag(), "emitted")
+                    .expect("Error when emitting");
+
                 let (message_id, payload) = &data[0];
                 log::info!(
                     "Start processing announcement with message_id: {}",
@@ -357,7 +366,7 @@ impl AnnouncementConsumer {
             }
 
             self._handle
-                .emit_all(ApplicationEvent::MediaUpdate.tag(), "emitted")
+                .emit_all(ApplicationEvent::MediaUpdateEnd.tag(), "emitted")
                 .expect("Error when emitting");
         }
     }
