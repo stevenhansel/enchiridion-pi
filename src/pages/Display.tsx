@@ -96,9 +96,10 @@ const Display = () => {
             src={images[index]}
           />
           <div style={{ position: "absolute", right: 25, bottom: 30 }}>
-            <Typography>
+            <Typography variant="h6">
               Created By Steven Hansel, Lukas Linardi, and Rudy Susanto
             </Typography>
+            <Typography variant="h6">Computer Engineering 2022</Typography>
           </div>
         </>
       ) : (
@@ -117,9 +118,10 @@ const Display = () => {
             src="/binus.jpeg"
           />
           <div style={{ position: "absolute", right: 25, bottom: 30 }}>
-            <Typography>
+            <Typography variant="h6">
               Created By Steven Hansel, Lukas Linardi, and Rudy Susanto
             </Typography>
+            <Typography variant="h6">Computer Engineering 2022</Typography>
           </div>
         </>
       )}
