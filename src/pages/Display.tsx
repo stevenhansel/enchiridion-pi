@@ -95,7 +95,7 @@ const Display = () => {
             }}
             src={images[index]}
           />
-          <div style={{ position: "absolute", right: 0, bottom: 0 }}>
+          <div style={{ position: "absolute", right: 25, bottom: 30 }}>
             <Typography>
               Created By Steven Hansel, Lukas Linardi, and Rudy Susanto
             </Typography>
@@ -116,7 +116,7 @@ const Display = () => {
             }}
             src="/binus.jpeg"
           />
-          <div style={{ position: "absolute", right: 0, bottom: 0 }}>
+          <div style={{ position: "absolute", right: 25, bottom: 30 }}>
             <Typography>
               Created By Steven Hansel, Lukas Linardi, and Rudy Susanto
             </Typography>
