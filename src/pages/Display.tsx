@@ -1,4 +1,5 @@
 import { Box } from "@mui/system";
+import { Typography } from "@mui/material";
 import { useCallback, useContext, useEffect, useState } from "react";
 import { ApplicationErrorCode, CAROUSEL_INTERVAL } from "../constants";
 import { ApplicationContext, ApplicationContextType } from "../context";
@@ -80,33 +81,47 @@ const Display = () => {
       }}
     >
       {images.length > 0 ? (
-        <img
-          style={{
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            display: "block",
-            width: "100vw",
-            height: "auto",
-            objectFit: "cover",
-          }}
-          src={images[index]}
-        />
+        <>
+          <img
+            style={{
+              position: "absolute",
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+              display: "block",
+              width: "100vw",
+              height: "auto",
+              objectFit: "cover",
+            }}
+            src={images[index]}
+          />
+          <div style={{ position: "absolute", right: 0, bottom: 0 }}>
+            <Typography>
+              Created By Steven Hansel, Lukas Linardi, and Rudy Susanto
+            </Typography>
+          </div>
+        </>
       ) : (
-        <img
-          style={{
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            display: "block",
-            width: "100vw",
-            height: "auto",
-            objectFit: "cover",
-          }}
-          src="/binus.jpeg"
-        />
+        <>
+          <img
+            style={{
+              position: "absolute",
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+              display: "block",
+              width: "100vw",
+              height: "auto",
+              objectFit: "cover",
+            }}
+            src="/binus.jpeg"
+          />
+          <div style={{ position: "absolute", right: 0, bottom: 0 }}>
+            <Typography>
+              Created By Steven Hansel, Lukas Linardi, and Rudy Susanto
+            </Typography>
+          </div>
+        </>
       )}
 
       <ApplicationSettings
