@@ -14,7 +14,7 @@ pub fn run() {
                 let api = EnchiridionApi::new(get_data_directory());
 
                 let redis_config =
-                    deadpool_redis::Config::from_url("redis://:ac9772178d656aeb6533b2f05c164bade00b58c10fe30586642a319ce3431cee@45.76.147.56:6379".to_string());
+                    deadpool_redis::Config::from_url("redis://:ac9772178d656aeb6533b2f05c164bade00b58c10fe30586642a319ce3431cee@18.143.23.68:6379".to_string());
                 let redis_pool = redis_config
                     .create_pool(Some(deadpool_redis::Runtime::Tokio1))
                     .expect("[error] Failed to open redis connection");

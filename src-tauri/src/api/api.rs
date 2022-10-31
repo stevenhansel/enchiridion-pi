@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use super::definition::{GetAnnouncementMediaResponse, MeBody, MeResponse};
 use crate::config::{ApplicationConfig, ApplicationConfigError};
 
-static BASE_URL: &str = "https://enchiridion.stevenhansel.com/device";
+static BASE_URL: &str = "https://beesmart.stevenhansel.com/device";
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
