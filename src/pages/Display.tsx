@@ -134,18 +134,6 @@ const Display = () => {
         </>
       )}
 
-      <div style={{ position: 'absolute', bottom: 5, right: 20 }}>
-        <button
-          onClick={() => {
-            if (isPaused) {
-              continueCarousel();
-            } else {
-              pauseCarousel();
-            }
-          }}
-        >{isPaused ? "continue" : "pause"}</button>
-      </div>
-
       <ApplicationSettings
         open={isSettingsOpen}
         handleClose={() => setIsSettingsOpen(false)}
