@@ -15,9 +15,9 @@ const Display = () => {
   const {
     setLoading,
     setError,
+    isNetworkConnected,
     carousel: {
       index,
-      isPaused,
       startCarousel,
       stopCarousel,
       pauseCarousel,
@@ -79,6 +79,22 @@ const Display = () => {
     };
   }, []);
 
+  useEffect(() => {
+    if (isSettingsOpen) {
+      pauseCarousel();
+    } else {
+      continueCarousel();
+    }
+  }, [isSettingsOpen]);
+
+  useEffect(() => {
+    if (isNetworkConnected) {
+      continueCarousel();
+    } else {
+      pauseCarousel();
+    }
+  }, [isNetworkConnected]);
+
   return (
     <Box
       sx={{
@@ -136,7 +152,9 @@ const Display = () => {
 
       <ApplicationSettings
         open={isSettingsOpen}
-        handleClose={() => setIsSettingsOpen(false)}
+        handleClose={() => {
+          setIsSettingsOpen(false);
+        }}
       />
     </Box>
   );

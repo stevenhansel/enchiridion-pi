@@ -43,15 +43,17 @@ const useCarousel = (interval: number) => {
   useEffect(() => {
     if (!isStart) return;
 
-    if (!tick.current && !isPaused) {
-      tick.current = setInterval(() => {
-        setIndex((previousIndex) =>
-          previousIndex + 1 === max ? 0 : previousIndex + 1
-        );
-      }, interval);
-    } else {
-      clearInterval(tick.current);
-      tick.current = 0;
+    if (max !== null) {
+      if (!tick.current && !isPaused) {
+        tick.current = setInterval(() => {
+          setIndex((previousIndex) =>
+            previousIndex + 1 === max ? 0 : previousIndex + 1
+          );
+        }, interval);
+      } else {
+        clearInterval(tick.current);
+        tick.current = 0;
+      }
     }
 
     return () => clearInterval(tick.current);

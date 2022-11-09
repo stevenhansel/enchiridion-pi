@@ -1,4 +1,4 @@
-import { Paper, Modal, Typography, Box } from "@mui/material";
+import { Grid, Paper, Modal, Typography, Box } from "@mui/material";
 import { LoadingButton } from "@mui/lab";
 import { useCallback, useContext, useEffect, useState } from "react";
 import { ApplicationErrorCode } from "../constants";
@@ -11,7 +11,7 @@ type Props = {
 };
 
 const ApplicationSettings = ({ open, handleClose }: Props) => {
-  const { setDevice, setError } =
+  const { device, setDevice, setError } =
     useContext<ApplicationContextType>(ApplicationContext);
 
   const [confirmUnlink, setConfirmUnlink] = useState(false);
@@ -65,22 +65,62 @@ const ApplicationSettings = ({ open, handleClose }: Props) => {
         <Box
           sx={{
             display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
             flexDirection: "column",
-            height: '100%',
+            paddingX: 6,
+            paddingY: 4,
           }}
         >
-          <Typography sx={{ marginBottom: 4 }}>Unlinking is experimental, please use with caution</Typography>
-          <LoadingButton
-            loading={loading}
-            variant="contained"
-            onClick={unlinkDevice}
+          {device ? (
+            <Box sx={{ marginBottom: 2 }}>
+              <Typography variant="h6" sx={{ fontWeight: 600, marginBottom: 1 }}>Device</Typography>
+
+              <Box sx={{ marginBottom: 1 }}>
+                <Typography sx={{ fontWeight: 600 }}>ID:</Typography>
+                <Typography>{device.id}</Typography>
+              </Box>
+
+              <Box sx={{ marginBottom: 1 }}>
+                <Typography sx={{ fontWeight: 600 }}>Name:</Typography>
+                <Typography>{device.name}</Typography>
+              </Box>
+
+              <Box sx={{ marginBottom: 1 }}>
+                <Typography sx={{ fontWeight: 600 }}>Description:</Typography>
+                <Typography>{device.description}</Typography>
+              </Box>
+
+              <Box sx={{ marginBottom: 1 }}>
+                <Typography sx={{ fontWeight: 600 }}>Location:</Typography>
+                <Typography>{device.location}</Typography>
+              </Box>
+            </Box>
+          ) : null}
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
           >
-            {confirmUnlink
-              ? "Click again to confirm device unlink"
-              : "Unlink Device"}
-          </LoadingButton>
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                Unlink
+              </Typography>
+              <Typography sx={{ marginBottom: 2 }}>
+                Unlinking is experimental, please use with caution
+              </Typography>
+            </Box>
+
+            <LoadingButton
+              variant="contained"
+              loading={loading}
+              onClick={unlinkDevice}
+            >
+              {confirmUnlink
+                ? "Click again to confirm device unlink"
+                : "Unlink Device"}
+            </LoadingButton>
+          </Box>
         </Box>
       </Paper>
     </Modal>

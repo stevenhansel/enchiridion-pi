@@ -26,9 +26,7 @@ const App = () => {
   const [isNetworkConnected, setIsNetworkConnected] = useState(true);
 
   const [carouselInterval, _setCarouselInterval] = useState(CAROUSEL_INTERVAL);
-
   const carousel = useCarousel(carouselInterval);
-  const { pauseCarousel, continueCarousel } = carousel;
 
   useEffect(() => {
     setLoading(true);
@@ -46,12 +44,10 @@ const App = () => {
       });
 
     const unlistener = setInterval(async () => {
-      const isNetworkConnected = await tauri.isNetworkConnected();
-
-      if (isNetworkConnected) continueCarousel();
-      else pauseCarousel();
-
-      setIsNetworkConnected(isNetworkConnected);
+      const updatedIsNetworkConnected = await tauri.isNetworkConnected();
+      if (updatedIsNetworkConnected !== isNetworkConnected) {
+        setIsNetworkConnected(updatedIsNetworkConnected);
+      }
     }, NETWORK_CONNECTION_CHECK_MS);
 
     return () => {
