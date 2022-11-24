@@ -7,7 +7,8 @@ pub mod announcement;
 pub mod queue;
 pub mod api;
 pub mod util;
-pub mod config;
+pub mod appconfig;
+pub mod settings;
 
 pub mod app;
 pub mod commands;

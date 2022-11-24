@@ -9,7 +9,7 @@ use tauri::{AppHandle, Manager};
 use tokio::time::sleep;
 
 use crate::{
-    api::EnchiridionApi, config::ApplicationConfig, events::ApplicationEvent, queue::Consumer,
+    api::EnchiridionApi, appconfig::ApplicationConfig, events::ApplicationEvent, queue::Consumer,
     util::get_data_directory,
 };
 

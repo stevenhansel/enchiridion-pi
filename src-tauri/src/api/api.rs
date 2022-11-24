@@ -7,9 +7,7 @@ use reqwest::{
 use serde::{Deserialize, Serialize};
 
 use super::definition::{GetAnnouncementMediaResponse, MeBody, MeResponse};
-use crate::config::{ApplicationConfig, ApplicationConfigError};
-
-static BASE_URL: &str = "https://api.beesmart.stevenhansel.com/device";
+use crate::appconfig::{ApplicationConfig, ApplicationConfigError};
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -62,15 +60,16 @@ pub struct AuthKeys {
 }
 
 pub struct EnchiridionApi {
+    base_url: String,
     client: reqwest::Client,
     directory: path::PathBuf,
 }
 
 impl EnchiridionApi {
-    pub fn new(directory: path::PathBuf) -> Self {
+    pub fn new(directory: path::PathBuf, base_url: String) -> Self {
         let client = reqwest::Client::new();
 
-        EnchiridionApi { client, directory }
+        EnchiridionApi { client, directory, base_url }
     }
 
     pub fn get_auth_headers(&self) -> Result<HeaderMap, ApiError> {
@@ -99,7 +98,7 @@ impl EnchiridionApi {
     ) -> Result<APIResponse<()>, ApiError> {
         let response = self
             .client
-            .put(format!("{}/v1/link", BASE_URL))
+            .put(format!("{}/v1/link", self.base_url))
             .json(&MeBody {
                 access_key_id,
                 secret_access_key,
@@ -118,7 +117,7 @@ impl EnchiridionApi {
     pub async fn unlink(&self) -> Result<APIResponse<()>, ApiError> {
         let response = self
             .client
-            .put(format!("{}/v1/unlink", BASE_URL))
+            .put(format!("{}/v1/unlink", self.base_url))
             .headers(self.get_auth_headers()?)
             .send()
             .await?;
@@ -148,7 +147,7 @@ impl EnchiridionApi {
 
         let response = self
             .client
-            .get(format!("{}/v1/me", BASE_URL))
+            .get(format!("{}/v1/me", self.base_url))
             .headers(headers)
             .send()
             .await?;
@@ -164,7 +163,7 @@ impl EnchiridionApi {
     pub async fn me(&self) -> Result<APIResponse<MeResponse>, ApiError> {
         let response = self
             .client
-            .get(format!("{}/v1/me", BASE_URL))
+            .get(format!("{}/v1/me", self.base_url))
             .headers(self.get_auth_headers()?)
             .send()
             .await?;
@@ -185,7 +184,7 @@ impl EnchiridionApi {
             .client
             .get(format!(
                 "{}/v1/announcements/{}/media",
-                BASE_URL, announcement_id
+                self.base_url, announcement_id
             ))
             .headers(self.get_auth_headers()?)
             .send()

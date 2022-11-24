@@ -2,13 +2,15 @@ use std::fs;
 
 use online::check;
 use serde::Serialize;
+use tauri::State;
 
 use crate::{
     api::{APIErrorResponse, APIResponse, EnchiridionApi},
-    config::{
+    appconfig::{
         ApplicationConfig, ApplicationConfigError, AuthenticationKey, DeviceBuildingInformation,
         DeviceFloorInformation, DeviceInformation,
     },
+    settings::Settings,
     util::get_data_directory,
 };
 
@@ -88,10 +90,14 @@ pub fn get_device_information() -> Result<DeviceInformation, CommandError> {
 
 #[tauri::command]
 pub async fn link(
+    settings: State<'_, Settings>,
     access_key_id: String,
     secret_access_key: String,
 ) -> Result<DeviceInformation, CommandError> {
-    let api = EnchiridionApi::new(get_data_directory());
+    let api = EnchiridionApi::new(
+        get_data_directory(),
+        settings.enchiridion_api_base_url.clone(),
+    );
 
     match api
         .link(access_key_id.clone(), secret_access_key.clone())
@@ -157,8 +163,11 @@ pub async fn link(
 }
 
 #[tauri::command]
-pub async fn unlink() -> Result<(), CommandError> {
-    let api = EnchiridionApi::new(get_data_directory());
+pub async fn unlink(settings: State<'_, Settings>) -> Result<(), CommandError> {
+    let api = EnchiridionApi::new(
+        get_data_directory(),
+        settings.enchiridion_api_base_url.clone(),
+    );
 
     match api.unlink().await {
         Ok(response) => {
@@ -186,4 +195,3 @@ pub async fn is_network_connected() -> bool {
         return false;
     }
 }
-
