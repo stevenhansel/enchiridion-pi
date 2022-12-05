@@ -8,8 +8,11 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
+src-tauri/bin
+build
 dist
 dist-ssr
+*.spec
 *.local
 
 # Editor directories and files

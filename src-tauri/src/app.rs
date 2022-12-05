@@ -1,4 +1,4 @@
-use tauri::async_runtime;
+use tauri::{api::process::Command, async_runtime};
 use tauri_plugin_log::{LogTarget, LoggerBuilder};
 
 use crate::{
@@ -9,6 +9,11 @@ use crate::{
 pub fn run() {
     let settings = Settings::new("src/settings/Settings.toml").unwrap();
 
+    Command::new_sidecar("camera")
+        .expect("failed to create `camera` binary command")
+        .spawn()
+        .expect("Failed to spawn sidecar");
+
     let redis_addr = settings.redis_addr.clone();
     let enchiridion_api_base_url = settings.enchiridion_api_base_url.clone();
 
@@ -18,8 +23,7 @@ pub fn run() {
             let handle = app.handle();
 
             async_runtime::spawn(async move {
-                let api =
-                    EnchiridionApi::new(get_data_directory(), enchiridion_api_base_url);
+                let api = EnchiridionApi::new(get_data_directory(), enchiridion_api_base_url);
 
                 let redis_config = deadpool_redis::Config::from_url(redis_addr);
                 let redis_pool = redis_config
