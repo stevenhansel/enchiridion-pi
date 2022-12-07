@@ -96,7 +96,7 @@ pub async fn link(
 ) -> Result<DeviceInformation, CommandError> {
     let api = EnchiridionApi::new(
         get_data_directory(),
-        settings.enchiridion_api_base_url.clone(),
+        settings.enchiridion_api_base_url.to_string(),
     );
 
     match api
@@ -166,7 +166,7 @@ pub async fn link(
 pub async fn unlink(settings: State<'_, Settings>) -> Result<(), CommandError> {
     let api = EnchiridionApi::new(
         get_data_directory(),
-        settings.enchiridion_api_base_url.clone(),
+        settings.enchiridion_api_base_url.to_string(),
     );
 
     match api.unlink().await {

@@ -7,14 +7,13 @@ use crate::{
 };
 
 pub fn run() {
-    let settings = Settings::new("src/settings/Settings.toml").unwrap();
+    let settings = Settings::new();
 
     let (mut rx, _child) = Command::new_sidecar("camera")
         .expect("failed to create `camera` binary command")
         .spawn()
         .expect("Failed to spawn sidecar");
 
-    println!("Before spawning the async runtime");
     async_runtime::spawn(async move {
         while let Some(event) = rx.recv().await {
             if let CommandEvent::Stdout(line) = event {
@@ -23,8 +22,8 @@ pub fn run() {
         }
     });
 
-    let redis_addr = settings.redis_addr.clone();
-    let enchiridion_api_base_url = settings.enchiridion_api_base_url.clone();
+    let redis_addr = settings.redis_addr.to_string();
+    let enchiridion_api_base_url = settings.enchiridion_api_base_url.to_string();
 
     tauri::Builder::default()
         .manage(settings)
