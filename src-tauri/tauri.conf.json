@@ -11,17 +11,6 @@
     "version": "0.1.0"
   },
   "tauri": {
-    "cli": {
-      "args": [
-        {
-	  "name": "camera",
-	  "short": "c",
-	  "takesValue": true,
-	  "multiple": true,
-	  "possibleValues": ["true", "false"]
-	}
-      ]
-    },
     "allowlist": {
       "all": true,
       "shell": {
@@ -55,7 +44,7 @@
       ],
       "identifier": "com.enchiridion.app",
       "longDescription": "",
-      "resources": [],
+      "resources": ["migrations"],
       "shortDescription": "",
       "targets": "deb"
     },

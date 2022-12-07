@@ -9,6 +9,7 @@ pub mod api;
 pub mod util;
 pub mod appconfig;
 pub mod settings;
+pub mod repositories;
 
 pub mod app;
 pub mod commands;
