@@ -1,4 +1,4 @@
-import os
+import subprocess
 import time
 import threading
 from math import sqrt
@@ -115,14 +115,38 @@ class Runtime:
         cv2.destroyAllWindows()
     
     def gstreamer(self):
-        pass
+        camera_frame_pid = None
+
+        while True:
+            time.sleep(1)
+
+            if camera_frame_pid == None:
+                try:
+                    wmctrl = subprocess.Popen(('wmctrl', '-lp'), stdout=subprocess.PIPE)
+                    output = subprocess.check_output(('grep', 'camera'), stdin=wmctrl.stdout, text=True)
+
+                    wmctrl.wait()
+
+                    pid = output.split(' ')[0]
+                    camera_frame_pid = pid
+
+                    break
+                except:
+                    print("Camera frame not detected, trying again...")
+
+                    continue
+   
+        gstreamer_cmd = 'gst-launch-1.0 ximagesrc xid={pid} ! videoconvert ! x264enc bitrate=1000 tune=zerolatency ! video/x-h264 ! h264parse ! video/x-h264 ! queue ! flvmux name=muxer ! rtmpsink location="rtmp://18.143.23.68/live/livestream live=1"'.format(pid=camera_frame_pid)
+        gst = subprocess.Popen(gstreamer_cmd, shell=True)
+        gst.wait()
+
 
     def timeseries(self):
         while True:
             time.sleep(1)
 
             self.mutex.acquire()
-            print("Sending timeseries data: num_of_faces: ", self.num_of_faces)
+            print("num_of_faces ", self.num_of_faces)
             self.mutex.release()
 
 rt = Runtime()
