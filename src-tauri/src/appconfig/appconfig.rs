@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 
 static APPLICATION_CONFIG_FILENAME: &str = "config.json";
 
+#[derive(Debug)]
 pub enum ApplicationConfigError {
     ConfigurationUnavailable(&'static str),
     DeviceUnavailable(&'static str),

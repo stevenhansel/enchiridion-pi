@@ -197,10 +197,16 @@ pub async fn is_network_connected() -> bool {
 }
 
 #[tauri::command]
-pub async fn spawn_camera() {
-    println!("Before spawning the camera");
+pub fn spawn_camera(settings: State<'_, Settings>) -> Result<(), String> {
+    let config = ApplicationConfig::load(get_data_directory()).unwrap();
+    let device = config.get_device().unwrap();
+
+    let device_id = device.id.to_string();
+    let device_id = device_id.as_str();
+
     let (mut rx, _child) = Command::new_sidecar("camera")
     .expect("failed to create `camera` binary command")
+    .args(["-id", device_id, "-ip", settings.srs_ip])
     .spawn()
     .expect("Failed to spawn sidecar");
 
@@ -211,4 +217,6 @@ pub async fn spawn_camera() {
             }
         }
     });
+
+    Ok(())
 }

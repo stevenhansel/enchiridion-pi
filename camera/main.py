@@ -4,6 +4,7 @@ import threading
 import os
 from math import sqrt
 
+import argparse
 import numpy as np
 import cv2
 import dlib
@@ -20,8 +21,9 @@ class Runtime:
     window_width = 600
     window_height = 450
 
-    def __init__(self):
-        pass
+    def __init__(self, device_id, srs_ip):
+        self.device_id = device_id
+        self.srs_ip = srs_ip
 
     def run(self):
         threads = [
@@ -147,7 +149,7 @@ class Runtime:
 
                     continue
    
-        gstreamer_cmd = 'gst-launch-1.0 ximagesrc xid={pid} ! videoconvert ! x264enc bitrate=1000 tune=zerolatency ! video/x-h264 ! h264parse ! video/x-h264 ! queue ! flvmux name=muxer ! rtmpsink location="rtmp://18.143.23.68/live/livestream/1 live=1"'.format(pid=camera_frame_pid)
+        gstreamer_cmd = 'gst-launch-1.0 ximagesrc xid={pid} ! videoconvert ! x264enc bitrate=1000 tune=zerolatency ! video/x-h264 ! h264parse ! video/x-h264 ! queue ! flvmux name=muxer ! rtmpsink location="rtmp://{srs_ip}/live/livestream/{device_id} live=1"'.format(pid=camera_frame_pid, srs_ip=self.srs_ip, device_id=self.device_id)
 
         with open(os.devnull, 'w') as fp:
             gst = subprocess.Popen(gstreamer_cmd, shell=True, stdout=fp)
@@ -188,5 +190,14 @@ class Runtime:
                 print("Unable to find window with the name of {application_name}".format(application_name=self.application_name), flush=True)
 
 
-rt = Runtime()
-rt.run()
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-id')
+    parser.add_argument('-ip')
+
+    args = parser.parse_args()
+
+    rt = Runtime(args.id, args.ip)
+    rt.run()
+
+main()
