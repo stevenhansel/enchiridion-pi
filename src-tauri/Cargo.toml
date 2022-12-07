@@ -1,15 +1,13 @@
 [package]
 name = "app"
 version = "0.1.0"
-description = "A Tauri App"
+description = "Beesmart desktop application"
 authors = ["you"]
 license = ""
 repository = ""
 default-run = "app"
 edition = "2021"
 rust-version = "1.57"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [build-dependencies]
 tauri-build = { version = "1.0.0-rc.8", features = [] }
@@ -23,18 +21,14 @@ deadpool-redis = { version = "0.10.2" }
 redis = { version = "0.21", default-features = false, features = ["acl", "aio", "script", "geospatial", "streams"] }
 reqwest = { version = "0.11.11", features = ["json"] }
 log = "0.4.17"
-env_logger = "0.9.0"
 chrono = "0.4.22"
 online = "4.0.0"
 
 [dependencies.tauri-plugin-log]
 git = "https://github.com/tauri-apps/tauri-plugin-log"
+features = ["colored"]
 branch = "dev"
 
 [features]
-# by default Tauri runs in production mode
-# when `tauri dev` runs it is executed with `cargo run --no-default-features` if `devPath` is an URL
 default = [ "custom-protocol" ]
-# this feature is used used for production builds where `devPath` points to the filesystem
-# DO NOT remove this
 custom-protocol = [ "tauri/custom-protocol" ]
