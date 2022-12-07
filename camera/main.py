@@ -1,17 +1,24 @@
 import subprocess
 import time
 import threading
+import os
 from math import sqrt
 
 import numpy as np
 import cv2
 import dlib
  
-DISTANCE_THRESHOLD = 250 
+DISTANCE_THRESHOLD = 500
 
 class Runtime:
     num_of_faces = 0
     mutex = threading.Lock()
+
+    application_name = "Enchiridion"
+
+    window_name = "camera"
+    window_width = 600
+    window_height = 450
 
     def __init__(self):
         pass
@@ -20,7 +27,8 @@ class Runtime:
         threads = [
             threading.Thread(target=self.camera),
             threading.Thread(target=self.gstreamer),
-            threading.Thread(target=self.timeseries)
+            threading.Thread(target=self.timeseries),
+            threading.Thread(target=self.wmctrl_focuser)
         ]
 
         for thread in threads:
@@ -107,7 +115,10 @@ class Runtime:
             self.num_of_faces = len(detected_faces)
             self.mutex.release()
 
-            cv2.imshow('camera', frame)
+            cv2.imshow(self.window_name, frame)
+            cv2.resizeWindow(self.window_name, self.window_width, self.window_height)
+            cv2.setWindowProperty(self.window_name, cv2.WND_PROP_TOPMOST, 0)
+
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
      
@@ -123,7 +134,7 @@ class Runtime:
             if camera_frame_pid == None:
                 try:
                     wmctrl = subprocess.Popen(('wmctrl', '-lp'), stdout=subprocess.PIPE)
-                    output = subprocess.check_output(('grep', 'camera'), stdin=wmctrl.stdout, text=True)
+                    output = subprocess.check_output(('grep', self.window_name), stdin=wmctrl.stdout, text=True)
 
                     wmctrl.wait()
 
@@ -132,13 +143,15 @@ class Runtime:
 
                     break
                 except:
-                    print("Camera frame not detected, trying again...")
+                    print("Camera frame not detected, trying again...", flush=True)
 
                     continue
    
-        gstreamer_cmd = 'gst-launch-1.0 ximagesrc xid={pid} ! videoconvert ! x264enc bitrate=1000 tune=zerolatency ! video/x-h264 ! h264parse ! video/x-h264 ! queue ! flvmux name=muxer ! rtmpsink location="rtmp://18.143.23.68/live/livestream live=1"'.format(pid=camera_frame_pid)
-        gst = subprocess.Popen(gstreamer_cmd, shell=True)
-        gst.wait()
+        gstreamer_cmd = 'gst-launch-1.0 ximagesrc xid={pid} ! videoconvert ! x264enc bitrate=1000 tune=zerolatency ! video/x-h264 ! h264parse ! video/x-h264 ! queue ! flvmux name=muxer ! rtmpsink location="rtmp://18.143.23.68/live/livestream/1 live=1"'.format(pid=camera_frame_pid)
+
+        with open(os.devnull, 'w') as fp:
+            gst = subprocess.Popen(gstreamer_cmd, shell=True, stdout=fp)
+            gst.wait()
 
 
     def timeseries(self):
@@ -146,8 +159,34 @@ class Runtime:
             time.sleep(1)
 
             self.mutex.acquire()
-            print("num_of_faces ", self.num_of_faces)
+            print("num_of_faces ", self.num_of_faces, flush=True)
             self.mutex.release()
+
+    def wmctrl_focuser(self):
+        while True:
+            time.sleep(1)
+            
+            try:
+                active_window = subprocess.check_output(("xdotool", "getwindowfocus", "getwindowname"), text=True).strip()
+                if active_window != "camera":
+                    continue
+
+                wmctrl = subprocess.Popen(("wmctrl", "-lp"), stdout=subprocess.PIPE)
+                output = subprocess.check_output(("grep", self.application_name), stdin=wmctrl.stdout, text=True)
+                wmctrl.wait()
+
+                if output == "":
+                    continue
+
+                focus_cmd = "wmctrl -a {application_name}".format(application_name=self.application_name)
+                with open(os.devnull, 'w') as fp:
+                    gst = subprocess.Popen(focus_cmd, shell=True, stdout=fp)
+                    gst.wait()
+
+                    is_focused = True
+            except:
+                print("Unable to find window with the name of {application_name}".format(application_name=self.application_name), flush=True)
+
 
 rt = Runtime()
 rt.run()
