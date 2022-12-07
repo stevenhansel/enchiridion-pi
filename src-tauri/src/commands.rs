@@ -2,7 +2,7 @@ use std::fs;
 
 use online::check;
 use serde::Serialize;
-use tauri::State;
+use tauri::{async_runtime, api::process::{Command, CommandEvent}, State};
 
 use crate::{
     api::{APIErrorResponse, APIResponse, EnchiridionApi},
@@ -194,4 +194,21 @@ pub async fn is_network_connected() -> bool {
     } else {
         return false;
     }
+}
+
+#[tauri::command]
+pub async fn spawn_camera() {
+    println!("Before spawning the camera");
+    let (mut rx, _child) = Command::new_sidecar("camera")
+    .expect("failed to create `camera` binary command")
+    .spawn()
+    .expect("Failed to spawn sidecar");
+
+    async_runtime::spawn(async move {
+        while let Some(event) = rx.recv().await {
+            if let CommandEvent::Stdout(line) = event {
+                println!("{}", line);
+            }
+        }
+    });
 }

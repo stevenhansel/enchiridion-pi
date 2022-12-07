@@ -1,4 +1,4 @@
-use tauri::{api::process::{Command, CommandEvent}, async_runtime};
+use tauri::async_runtime;
 use tauri_plugin_log::{LogTarget, LoggerBuilder};
 
 use crate::{
@@ -8,19 +8,6 @@ use crate::{
 
 pub fn run() {
     let settings = Settings::new();
-
-    let (mut rx, _child) = Command::new_sidecar("camera")
-        .expect("failed to create `camera` binary command")
-        .spawn()
-        .expect("Failed to spawn sidecar");
-
-    async_runtime::spawn(async move {
-        while let Some(event) = rx.recv().await {
-            if let CommandEvent::Stdout(line) = event {
-                println!("{}", line);
-            }
-        }
-    });
 
     let redis_addr = settings.redis_addr.to_string();
     let enchiridion_api_base_url = settings.enchiridion_api_base_url.to_string();
@@ -50,6 +37,7 @@ pub fn run() {
             commands::link,
             commands::unlink,
             commands::is_network_connected,
+            commands::spawn_camera,
         ])
         .plugin(
             LoggerBuilder::default()

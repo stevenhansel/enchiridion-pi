@@ -7,6 +7,7 @@ import { ApplicationContext, ApplicationContextType } from "../context";
 import {
   listenToMediaUpdateStart,
   listenToMediaUpdateEnd,
+  spawnCamera,
   tauri,
 } from "../tauri";
 import ApplicationSettings from "./ApplicationSettings";
@@ -47,20 +48,22 @@ const Display = () => {
   };
 
   const initializeAnnouncementMedia = () => {
-    getAnnouncementMedias().then(() => {
-      startCarousel();
+    spawnCamera()
+	.then(() => getAnnouncementMedias())
+	.then(() => {
+	      startCarousel();
 
-      listenToMediaUpdateStart(() => {
-        setLoading(true);
-        pauseCarousel();
-      });
+	      listenToMediaUpdateStart(() => {
+		setLoading(true);
+		pauseCarousel();
+	      });
 
-      listenToMediaUpdateEnd(async () => {
-        await getAnnouncementMedias();
-        setLoading(false);
-        continueCarousel();
-      });
-    });
+	      listenToMediaUpdateEnd(async () => {
+		await getAnnouncementMedias();
+		setLoading(false);
+		continueCarousel();
+	      });
+	});
   };
 
   const handleSettingsKeydownEvent = useCallback((event: KeyboardEvent) => {
@@ -71,6 +74,7 @@ const Display = () => {
 
   useEffect(() => {
     initializeAnnouncementMedia();
+    spawnCamera();
 
     document.addEventListener("keydown", handleSettingsKeydownEvent);
     return () => {
