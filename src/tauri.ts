@@ -9,6 +9,7 @@ enum TauriCommands {
   Unlink = "unlink",
   IsNetworkConnected = "is_network_connected",
   SpawnCamera = "spawn_camera",
+  SpawnAnnouncementConsumer = "spawn_announcement_consumer",
 }
 
 enum TauriEvents {
@@ -118,10 +119,16 @@ export const spawnCamera = async () => {
   await invoke(TauriCommands.SpawnCamera);
 };
 
+export const spawnAnnouncementConsumer = async () => {
+  await invoke(TauriCommands.SpawnAnnouncementConsumer);
+};
+
 export const tauri = {
   getImages,
   getDeviceInformation,
   link,
   unlink,
   isNetworkConnected,
+  spawnCamera,
+  spawnAnnouncementConsumer,
 };

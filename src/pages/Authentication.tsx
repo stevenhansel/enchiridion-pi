@@ -1,4 +1,4 @@
-import { useCallback, useContext, useState } from "react";
+import { useCallback, useEffect, useContext, useState } from "react";
 import {
   Button,
   Box,
@@ -14,6 +14,7 @@ import {
   tauri,
   TauriErrorObject,
 } from "../tauri";
+import { getMatches } from '@tauri-apps/api/cli';
 import { ApplicationContext, ApplicationContextType } from "../context";
 import { ApplicationErrorCode } from "../constants";
 
@@ -25,14 +26,17 @@ const Authentication = () => {
 
   const [accessKeyId, setAccessKeyId] = useState("");
   const [secretAccessKey, setSecretAccessKey] = useState("");
+  const [cameraEnabled, setCameraEnabled] = useState(false);
 
   const link = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await tauri.link(accessKeyId, secretAccessKey);
+
+      const response = await tauri.link(accessKeyId, secretAccessKey, cameraEnabled);
       if (isTauriErrorObject<DeviceInformation>(response)) {
         let { errorCode, messages } = response as TauriErrorObject;
         setError({ code: errorCode, message: messages[0] });
+
         setLoading(false);
         return;
       }
@@ -46,6 +50,13 @@ const Authentication = () => {
       setLoading(false);
     }
   }, [accessKeyId, secretAccessKey]);
+
+  useEffect(() => {
+console.log('asd');
+    getMatches().then((matches) => {
+	console.log('matches: ', matches);
+    })
+  }, []);
 
   return (
     <Container

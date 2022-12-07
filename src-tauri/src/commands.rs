@@ -5,6 +5,7 @@ use serde::Serialize;
 use tauri::{async_runtime, api::process::{Command, CommandEvent}, State};
 
 use crate::{
+    announcement::AnnouncementConsumer,
     api::{APIErrorResponse, APIResponse, EnchiridionApi},
     appconfig::{
         ApplicationConfig, ApplicationConfigError, AuthenticationKey, DeviceBuildingInformation,
@@ -93,6 +94,7 @@ pub async fn link(
     settings: State<'_, Settings>,
     access_key_id: String,
     secret_access_key: String,
+    camera_enabled: bool,
 ) -> Result<DeviceInformation, CommandError> {
     let api = EnchiridionApi::new(
         get_data_directory(),
@@ -100,7 +102,7 @@ pub async fn link(
     );
 
     match api
-        .link(access_key_id.clone(), secret_access_key.clone())
+        .link(access_key_id.clone(), secret_access_key.clone(), camera_enabled)
         .await
     {
         Ok(response) => {
@@ -144,6 +146,7 @@ pub async fn link(
             name: device.location.building.name,
             color: device.location.building.color,
         },
+        camera_enabled: device.camera_enabled,
         created_at: device.created_at,
         updated_at: device.updated_at,
     };
@@ -216,6 +219,26 @@ pub fn spawn_camera(settings: State<'_, Settings>) -> Result<(), String> {
                 println!("{}", line);
             }
         }
+    });
+
+    Ok(())
+}
+
+#[tauri::command]
+pub fn spawn_announcement_consumer(handle: tauri::AppHandle, settings: State<'_, Settings>) -> Result<(), String> {
+    let enchiridion_api_base_url = settings.enchiridion_api_base_url.to_string();
+    let redis_addr = settings.redis_addr.to_string();
+
+    async_runtime::spawn(async move {
+        let api = EnchiridionApi::new(get_data_directory(), enchiridion_api_base_url);
+
+        let redis_config = deadpool_redis::Config::from_url(redis_addr);
+        let redis_pool = redis_config
+            .create_pool(Some(deadpool_redis::Runtime::Tokio1))
+            .expect("[error] Failed to open redis connection");
+
+        let consumer = AnnouncementConsumer::new(redis_pool, api, handle);
+        consumer.consume().await;
     });
 
     Ok(())

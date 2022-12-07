@@ -164,6 +164,7 @@ pub struct DeviceInformation {
     pub location: String,
     pub floor: DeviceFloorInformation,
     pub building: DeviceBuildingInformation,
+    pub camera_enabled: bool,
     pub created_at: String,
     pub updated_at: String,
 }

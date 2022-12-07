@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 pub struct MeBody {
     pub access_key_id: String,
     pub secret_access_key: String,
+    pub camera_enabled: bool,
 }
 
 #[derive(Deserialize)]
@@ -16,6 +17,7 @@ pub struct MeResponse {
     pub location: DeviceLocation,
     pub description: String,
     pub active_announcements: i32,
+    pub camera_enabled: bool,
     pub created_at: String,
     pub updated_at: String,
 }

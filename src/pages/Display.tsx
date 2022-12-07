@@ -8,6 +8,7 @@ import {
   listenToMediaUpdateStart,
   listenToMediaUpdateEnd,
   spawnCamera,
+  spawnAnnouncementConsumer,
   tauri,
 } from "../tauri";
 import ApplicationSettings from "./ApplicationSettings";
@@ -48,7 +49,8 @@ const Display = () => {
   };
 
   const initializeAnnouncementMedia = () => {
-    spawnCamera()
+    spawnAnnouncementConsumer()
+	.then(() => spawnCamera())
 	.then(() => getAnnouncementMedias())
 	.then(() => {
 	      startCarousel();
@@ -74,7 +76,6 @@ const Display = () => {
 
   useEffect(() => {
     initializeAnnouncementMedia();
-    spawnCamera();
 
     document.addEventListener("keydown", handleSettingsKeydownEvent);
     return () => {

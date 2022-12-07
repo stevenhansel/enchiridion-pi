@@ -1,33 +1,19 @@
-use tauri::async_runtime;
 use tauri_plugin_log::{LogTarget, LoggerBuilder};
 
 use crate::{
-    announcement::AnnouncementConsumer, api::EnchiridionApi, commands, settings::Settings,
-    util::get_data_directory,
+    commands,
+    settings::Settings,
 };
 
 pub fn run() {
     let settings = Settings::new();
 
-    let redis_addr = settings.redis_addr.to_string();
-    let enchiridion_api_base_url = settings.enchiridion_api_base_url.to_string();
-
     tauri::Builder::default()
         .manage(settings)
         .setup(|app| {
-            let handle = app.handle();
-
-            async_runtime::spawn(async move {
-                let api = EnchiridionApi::new(get_data_directory(), enchiridion_api_base_url);
-
-                let redis_config = deadpool_redis::Config::from_url(redis_addr);
-                let redis_pool = redis_config
-                    .create_pool(Some(deadpool_redis::Runtime::Tokio1))
-                    .expect("[error] Failed to open redis connection");
-
-                let consumer = AnnouncementConsumer::new(redis_pool, api, handle);
-                consumer.consume().await;
-            });
+            if let Ok(matches) = app.get_cli_matches() {
+                println!("{:?}", matches);
+            }
 
             Ok(())
         })
@@ -38,6 +24,7 @@ pub fn run() {
             commands::unlink,
             commands::is_network_connected,
             commands::spawn_camera,
+            commands::spawn_announcement_consumer,
         ])
         .plugin(
             LoggerBuilder::default()
