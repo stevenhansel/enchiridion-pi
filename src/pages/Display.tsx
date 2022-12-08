@@ -126,7 +126,7 @@ const Display = () => {
               height: "auto",
               objectFit: "cover",
             }}
-            src={`asset:///images/5.jpg`}
+            src={`asset:///${announcements[index].local_path}`}
           />
           <div style={{ position: "absolute", right: 25, bottom: 30 }}>
             <Typography variant="h6">
