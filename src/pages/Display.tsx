@@ -3,11 +3,16 @@ import { Typography } from "@mui/material";
 import { useCallback, useContext, useEffect, useState } from "react";
 import { ApplicationErrorCode } from "../constants";
 import { ApplicationContext, ApplicationContextType } from "../context";
+import { appDataDir, join } from "@tauri-apps/api/path";
+import { convertFileSrc } from "@tauri-apps/api/tauri";
 
 import {
   listenToMediaUpdateStart,
   listenToMediaUpdateEnd,
+  spawnCamera,
+  spawnAnnouncementConsumer,
   tauri,
+  Announcement,
 } from "../tauri";
 import ApplicationSettings from "./ApplicationSettings";
 
@@ -25,20 +30,40 @@ const Display = () => {
       updateMax,
     },
   } = useContext<ApplicationContextType>(ApplicationContext);
-  const [images, setImages] = useState<string[]>([]);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const getAnnouncementMedias = async () => {
     try {
-      const images = await tauri.getImages();
-      if (images.length === 0) {
-        setImages([]);
+      const appDataDirPath = await appDataDir();
+
+      const rawAnnouncements = await tauri.getAnnouncements();
+      const announcements = await Promise.all(
+        rawAnnouncements.map(async (announcement) => {
+          const image_path = await join(
+            appDataDirPath,
+            announcement.local_path
+          );
+
+          const local_path = convertFileSrc(image_path);
+
+          return {
+            id: announcement.id,
+            announcement_id: announcement.announcement_id,
+            local_path,
+          };
+        })
+      );
+
+      if (announcements.length === 0) {
+        setAnnouncements([]);
         return;
       }
 
-      setImages(images);
-      updateMax(images.length);
+      setAnnouncements(announcements);
+      updateMax(announcements.length);
     } catch (e) {
+      console.error(e);
       setError({
         code: ApplicationErrorCode.InitializationError,
         message: "Something went wrong when initializing the application",
@@ -47,20 +72,25 @@ const Display = () => {
   };
 
   const initializeAnnouncementMedia = () => {
-    getAnnouncementMedias().then(() => {
-      startCarousel();
+    spawnAnnouncementConsumer()
+      .then(() => spawnCamera())
+      .then(() => getAnnouncementMedias())
+      .then(() => {
+        startCarousel();
 
-      listenToMediaUpdateStart(() => {
-        setLoading(true);
-        pauseCarousel();
-      });
+        listenToMediaUpdateStart(() => {
+          setLoading(true);
+          pauseCarousel();
+        });
 
-      listenToMediaUpdateEnd(async () => {
-        await getAnnouncementMedias();
-        setLoading(false);
-        continueCarousel();
-      });
-    });
+        listenToMediaUpdateEnd(async () => {
+          await getAnnouncementMedias();
+
+          setLoading(false);
+          continueCarousel();
+        });
+      })
+      .catch((err) => console.error(err));
   };
 
   const handleSettingsKeydownEvent = useCallback((event: KeyboardEvent) => {
@@ -104,7 +134,7 @@ const Display = () => {
         justifyContent: "center",
       }}
     >
-      {images.length > 0 ? (
+      {announcements.length > 0 ? (
         <>
           <img
             style={{
@@ -117,7 +147,7 @@ const Display = () => {
               height: "auto",
               objectFit: "cover",
             }}
-            src={images[index]}
+            src={announcements[index].local_path}
           />
           <div style={{ position: "absolute", right: 25, bottom: 30 }}>
             <Typography variant="h6">

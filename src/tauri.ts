@@ -3,11 +3,13 @@ import { listen, UnlistenFn } from "@tauri-apps/api/event";
 import { ApplicationErrorCode } from "./constants";
 
 enum TauriCommands {
-  GetImages = "get_images",
+  GetAnnouncements = "get_announcements",
   GetDeviceInformation = "get_device_information",
   Link = "link",
   Unlink = "unlink",
   IsNetworkConnected = "is_network_connected",
+  SpawnCamera = "spawn_camera",
+  SpawnAnnouncementConsumer = "spawn_announcement_consumer",
 }
 
 enum TauriEvents {
@@ -28,6 +30,12 @@ export const isTauriErrorObject = <T>(
 
 export type TauriCommandResponse<T> = T | TauriErrorObject;
 
+export type Announcement = {
+  id: number;
+  announcement_id: number;
+  local_path: string;
+}
+
 export type DeviceInformation = {
   id: number;
   name: string;
@@ -39,9 +47,9 @@ export type DeviceInformation = {
   updatedAt: string;
 };
 
-const getImages = async () => {
+const getAnnouncements = async () => {
   try {
-    const images: string[] = await invoke(TauriCommands.GetImages);
+    const images: Announcement[] = await invoke(TauriCommands.GetAnnouncements);
 
     return images;
   } catch (err) {
@@ -86,12 +94,14 @@ export const listenToMediaUpdateEnd = async (
 
 export const link = async (
   accessKeyId: string,
-  secretAccessKey: string
+  secretAccessKey: string,
+  cameraEnabled: boolean,
 ): Promise<TauriCommandResponse<DeviceInformation>> => {
   try {
     const device = await invoke(TauriCommands.Link, {
       accessKeyId,
       secretAccessKey,
+      cameraEnabled,
     });
 
     return device as DeviceInformation;
@@ -113,10 +123,20 @@ export const isNetworkConnected = async () => {
   return isNetworkConnected as boolean;
 };
 
+export const spawnCamera = async () => {
+  await invoke(TauriCommands.SpawnCamera);
+};
+
+export const spawnAnnouncementConsumer = async () => {
+  await invoke(TauriCommands.SpawnAnnouncementConsumer);
+};
+
 export const tauri = {
-  getImages,
+  getAnnouncements,
   getDeviceInformation,
   link,
   unlink,
   isNetworkConnected,
+  spawnCamera,
+  spawnAnnouncementConsumer,
 };

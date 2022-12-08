@@ -1,17 +1,20 @@
-use std::fs;
+use std::{path::PathBuf, str::FromStr, sync::Arc};
 
 use online::check;
 use serde::Serialize;
-use tauri::State;
+use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
+use tauri::{
+    api::process::{Command, CommandEvent},
+    async_runtime, State,
+};
 
 use crate::{
-    api::{APIErrorResponse, APIResponse, EnchiridionApi},
-    appconfig::{
-        ApplicationConfig, ApplicationConfigError, AuthenticationKey, DeviceBuildingInformation,
-        DeviceFloorInformation, DeviceInformation,
-    },
+    api::{ApiError, EnchiridionApi},
+    consumer,
+    domain::{Announcement, Device},
+    repositories::{AnnouncementRepository, DeviceRepository},
+    services::{AnnouncementService, DeviceService, LinkDeviceError, UnlinkDeviceError},
     settings::Settings,
-    util::get_data_directory,
 };
 
 #[derive(Debug, Serialize)]
@@ -37,152 +40,76 @@ impl CommandError {
     }
 }
 
-impl From<APIErrorResponse> for CommandError {
-    fn from(err: APIErrorResponse) -> Self {
-        CommandError {
-            error_code: err.error_code,
-            messages: err.messages,
-        }
-    }
-}
-
-impl From<ApplicationConfigError> for CommandError {
-    fn from(err: ApplicationConfigError) -> Self {
-        CommandError {
-            error_code: err.code().to_string(),
-            messages: vec![err.to_string()],
+#[tauri::command]
+pub async fn get_announcements(
+    announcement_service: State<'_, Arc<AnnouncementService>>,
+) -> Result<Vec<Announcement>, CommandError> {
+    match announcement_service.find_all().await {
+        Ok(announcements) => Ok(announcements),
+        Err(_) => {
+            return Err(CommandError::application_error(
+                "Unable to fetch announcements from the local database".to_string(),
+            ))
         }
     }
 }
 
 #[tauri::command]
-pub fn get_images() -> Result<Vec<String>, CommandError> {
-    let images_dir = get_data_directory().join("images");
-
-    if !images_dir.exists() {
-        fs::create_dir_all(images_dir.clone()).expect("Error when creating image directory");
-    }
-
-    let images = fs::read_dir(images_dir).expect("Error when reading directory");
-    let res = images
-        .filter_map(|entry| {
-            entry
-                .ok()
-                .and_then(|e| e.path().to_str().map(|s| ["asset:///", s].concat()))
-        })
-        .collect::<Vec<String>>();
-
-    return Ok(res);
-}
-
-#[tauri::command]
-pub fn get_device_information() -> Result<DeviceInformation, CommandError> {
-    let config = match ApplicationConfig::load(get_data_directory()) {
-        Ok(config) => config,
-        Err(e) => return Err(CommandError::new(e.code().to_string(), vec![e.to_string()])),
-    };
-
-    match config.get_device() {
+pub async fn get_device_information(
+    device_service: State<'_, Arc<DeviceService>>,
+) -> Result<Device, CommandError> {
+    match device_service.get_device().await {
         Ok(device) => Ok(device),
-        Err(e) => Err(CommandError::new(e.code().to_string(), vec![e.to_string()])),
+        Err(e) => return Err(CommandError::new(e.to_string(), vec![])),
     }
 }
 
 #[tauri::command]
 pub async fn link(
-    settings: State<'_, Settings>,
+    device_service: State<'_, Arc<DeviceService>>,
     access_key_id: String,
     secret_access_key: String,
-) -> Result<DeviceInformation, CommandError> {
-    let api = EnchiridionApi::new(
-        get_data_directory(),
-        settings.enchiridion_api_base_url.clone(),
-    );
-
-    match api
-        .link(access_key_id.clone(), secret_access_key.clone())
+    camera_enabled: bool,
+) -> Result<Device, CommandError> {
+    match device_service
+        .link(access_key_id, secret_access_key, camera_enabled)
         .await
     {
-        Ok(response) => {
-            if let APIResponse::Error(error) = response {
-                return Err(error.into());
+        Ok(device) => Ok(device),
+        Err(e) => {
+            println!("e: {:?}", e);
+            match e {
+                LinkDeviceError::ApiError(api_error) => match api_error {
+                    ApiError::ClientError(client_error) => {
+                        return Err(CommandError::new(
+                            client_error.error_code,
+                            client_error.messages,
+                        ))
+                    }
+                    _ => return Err(CommandError::new(api_error.to_string(), vec![])),
+                },
+                _ => return Err(CommandError::new(e.to_string(), vec![])),
             }
         }
-        Err(_) => {
-            return Err(CommandError::application_error(String::from(
-                "Something when wrong when linking the device",
-            )))
-        }
-    };
-
-    let device = match api
-        .me_with_keys(access_key_id.clone(), secret_access_key.clone())
-        .await
-    {
-        Ok(response) => match response {
-            APIResponse::Success(device) => device,
-            APIResponse::Error(error) => return Err(error.into()),
-        },
-        Err(_) => {
-            return Err(CommandError::application_error(String::from(
-                "Something when wrong when getting the device information",
-            )))
-        }
-    };
-
-    let device = DeviceInformation {
-        id: device.id,
-        name: device.name,
-        description: device.description,
-        location: device.location.text,
-        floor: DeviceFloorInformation {
-            id: device.location.floor.id,
-            name: device.location.floor.name,
-        },
-        building: DeviceBuildingInformation {
-            id: device.location.building.id,
-            name: device.location.building.name,
-            color: device.location.building.color,
-        },
-        created_at: device.created_at,
-        updated_at: device.updated_at,
-    };
-
-    // Watchout saving auth keys and device individually with lead to data race (in one process)
-    if let Err(e) = ApplicationConfig::new(
-        get_data_directory(),
-        AuthenticationKey::new(access_key_id, secret_access_key),
-        device.clone(),
-    )
-    .save()
-    {
-        return Err(e.into());
     }
-
-    Ok(device)
 }
 
 #[tauri::command]
-pub async fn unlink(settings: State<'_, Settings>) -> Result<(), CommandError> {
-    let api = EnchiridionApi::new(
-        get_data_directory(),
-        settings.enchiridion_api_base_url.clone(),
-    );
-
-    match api.unlink().await {
-        Ok(response) => {
-            if let APIResponse::Error(error) = response {
-                return Err(error.into());
-            }
+pub async fn unlink(device_service: State<'_, Arc<DeviceService>>) -> Result<(), CommandError> {
+    if let Err(e) = device_service.unlink().await {
+        match e {
+            UnlinkDeviceError::ApiError(api_error) => match api_error {
+                ApiError::ClientError(client_error) => {
+                    return Err(CommandError::new(
+                        client_error.error_code,
+                        client_error.messages,
+                    ))
+                }
+                _ => return Err(CommandError::new(api_error.to_string(), vec![])),
+            },
+            _ => return Err(CommandError::new(e.to_string(), vec![])),
         }
-        Err(_) => {
-            return Err(CommandError::application_error(String::from(
-                "Something when wrong when unlinking the device",
-            )));
-        }
-    };
-
-    ApplicationConfig::load(get_data_directory())?.remove()?;
+    }
 
     Ok(())
 }
@@ -194,4 +121,91 @@ pub async fn is_network_connected() -> bool {
     } else {
         return false;
     }
+}
+
+#[tauri::command]
+pub async fn spawn_camera(
+    settings: State<'_, Settings>,
+    device_service: State<'_, Arc<DeviceService>>,
+) -> Result<(), CommandError> {
+    let device = match device_service.get_device().await {
+        Ok(device) => device,
+        Err(e) => return Err(CommandError::new(e.to_string(), vec![])),
+    };
+
+    let device_id = device.id.to_string();
+    let device_id = device_id.as_str();
+
+    let (mut rx, _child) = Command::new_sidecar("camera")
+        .expect("failed to create `camera` binary command")
+        .args(["-id", device_id, "-ip", settings.srs_ip])
+        .spawn()
+        .expect("Failed to spawn sidecar");
+
+    async_runtime::spawn(async move {
+        while let Some(event) = rx.recv().await {
+            if let CommandEvent::Stdout(line) = event {
+                println!("{}", line);
+            }
+        }
+    });
+
+    Ok(())
+}
+
+#[tauri::command]
+pub fn spawn_announcement_consumer(
+    handle: tauri::AppHandle,
+    settings: State<'_, Settings>,
+    app_local_data_dir: State<'_, PathBuf>,
+) -> Result<(), String> {
+    println!("Announcement consumer is starting");
+
+    let app_local_data_dir_path_buf = app_local_data_dir.to_path_buf();
+    let app_local_data_dir = app_local_data_dir.to_str().unwrap().to_string();
+    let redis_addr = settings.redis_addr.clone();
+    let enchiridion_api_base_url = settings.enchiridion_api_base_url.clone();
+
+    async_runtime::spawn(async move {
+        let sqlite_opt = SqliteConnectOptions::from_str(
+            format!("sqlite://{}/data.db", app_local_data_dir).as_str(),
+        )
+        .unwrap()
+        .create_if_missing(true);
+
+        let pool = SqlitePoolOptions::new()
+            .max_connections(10)
+            .connect_with(sqlite_opt)
+            .await
+            .unwrap();
+
+        let redis_config = deadpool_redis::Config::from_url(redis_addr);
+        let redis_pool = redis_config
+            .create_pool(Some(deadpool_redis::Runtime::Tokio1))
+            .expect("[error] Failed to open redis connection");
+
+        let device_repository = Arc::new(DeviceRepository::new(pool.clone()));
+        let announcement_repository = Arc::new(AnnouncementRepository::new(pool.clone()));
+
+        let enchiridion_api = Arc::new(EnchiridionApi::new(
+            enchiridion_api_base_url.to_string(),
+            device_repository.clone(),
+        ));
+
+        let device_service = Arc::new(DeviceService::new(
+            device_repository.clone(),
+            enchiridion_api.clone(),
+        ));
+        let announcement_service = Arc::new(AnnouncementService::new(
+            app_local_data_dir_path_buf,
+            announcement_repository.clone(),
+            enchiridion_api.clone(),
+        ));
+
+        let device = device_service.get_device().await.unwrap();
+
+        consumer::announcement::consume(device, handle, redis_pool, announcement_service).await;
+    });
+
+    Ok(())
 }

@@ -3,11 +3,12 @@
     windows_subsystem = "windows"
 )]
 
-pub mod announcement;
-pub mod queue;
 pub mod api;
-pub mod util;
-pub mod appconfig;
+pub mod consumer;
+pub mod domain;
+pub mod queue;
+pub mod repositories;
+pub mod services;
 pub mod settings;
 
 pub mod app;
