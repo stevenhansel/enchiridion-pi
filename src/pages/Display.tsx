@@ -3,6 +3,8 @@ import { Typography } from "@mui/material";
 import { useCallback, useContext, useEffect, useState } from "react";
 import { ApplicationErrorCode } from "../constants";
 import { ApplicationContext, ApplicationContextType } from "../context";
+import { appDataDir, join } from "@tauri-apps/api/path";
+import { convertFileSrc } from "@tauri-apps/api/tauri";
 
 import {
   listenToMediaUpdateStart,
@@ -33,7 +35,22 @@ const Display = () => {
 
   const getAnnouncementMedias = async () => {
     try {
-      const announcements = await tauri.getAnnouncements();
+      const appDataDirPath = await appDataDir();
+      console.log("appDataDir: ", appDataDirPath);
+
+      const rawAnnouncements = await tauri.getAnnouncements();
+      const announcements = await Promise.all(rawAnnouncements.map(async (announcement) => {
+        const image_path = await join(appDataDirPath, `images/${announcement.announcement_id}.jpeg`);
+	const local_path = convertFileSrc(image_path);
+	console.log('local_path; ', local_path);
+
+	return {
+		id: announcement.id,
+		announcement_id: announcement.announcement_id,
+		local_path,
+	};
+      }));
+
       console.log("announcements: ", announcements);
       if (announcements.length === 0) {
         setAnnouncements([]);
@@ -43,6 +60,7 @@ const Display = () => {
       setAnnouncements(announcements);
       updateMax(announcements.length);
     } catch (e) {
+      console.error(e);
       setError({
         code: ApplicationErrorCode.InitializationError,
         message: "Something went wrong when initializing the application",
@@ -126,7 +144,7 @@ const Display = () => {
               height: "auto",
               objectFit: "cover",
             }}
-            src={`asset:///${announcements[index].local_path}`}
+            src={announcements[index].local_path}
           />
           <div style={{ position: "absolute", right: 25, bottom: 30 }}>
             <Typography variant="h6">
