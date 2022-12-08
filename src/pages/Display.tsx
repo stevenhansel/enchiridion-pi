@@ -10,6 +10,7 @@ import {
   spawnCamera,
   spawnAnnouncementConsumer,
   tauri,
+  Announcement,
 } from "../tauri";
 import ApplicationSettings from "./ApplicationSettings";
 
@@ -27,19 +28,20 @@ const Display = () => {
       updateMax,
     },
   } = useContext<ApplicationContextType>(ApplicationContext);
-  const [images, setImages] = useState<string[]>([]);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const getAnnouncementMedias = async () => {
     try {
-      const images = await tauri.getImages();
-      if (images.length === 0) {
-        setImages([]);
+      const announcements = await tauri.getAnnouncements();
+      console.log("announcements: ", announcements);
+      if (announcements.length === 0) {
+        setAnnouncements([]);
         return;
       }
 
-      setImages(images);
-      updateMax(images.length);
+      setAnnouncements(announcements);
+      updateMax(announcements.length);
     } catch (e) {
       setError({
         code: ApplicationErrorCode.InitializationError,
@@ -50,22 +52,24 @@ const Display = () => {
 
   const initializeAnnouncementMedia = () => {
     spawnAnnouncementConsumer()
-	.then(() => spawnCamera())
-	.then(() => getAnnouncementMedias())
-	.then(() => {
-	      startCarousel();
+      .then(() => spawnCamera())
+      .then(() => getAnnouncementMedias())
+      .then(() => {
+        startCarousel();
 
-	      listenToMediaUpdateStart(() => {
-		setLoading(true);
-		pauseCarousel();
-	      });
+        listenToMediaUpdateStart(() => {
+          setLoading(true);
+          pauseCarousel();
+        });
 
-	      listenToMediaUpdateEnd(async () => {
-		await getAnnouncementMedias();
-		setLoading(false);
-		continueCarousel();
-	      });
-	});
+        listenToMediaUpdateEnd(async () => {
+          await getAnnouncementMedias();
+
+          setLoading(false);
+          continueCarousel();
+        });
+      })
+      .catch((err) => console.error(err));
   };
 
   const handleSettingsKeydownEvent = useCallback((event: KeyboardEvent) => {
@@ -109,7 +113,7 @@ const Display = () => {
         justifyContent: "center",
       }}
     >
-      {images.length > 0 ? (
+      {announcements.length > 0 ? (
         <>
           <img
             style={{
@@ -122,7 +126,7 @@ const Display = () => {
               height: "auto",
               objectFit: "cover",
             }}
-            src={images[index]}
+            src={`asset:///images/5.jpg`}
           />
           <div style={{ position: "absolute", right: 25, bottom: 30 }}>
             <Typography variant="h6">

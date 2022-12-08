@@ -1,91 +1,68 @@
-use std::path;
+use std::{io, sync::Arc};
 
 use reqwest::{
     header::{HeaderMap, HeaderValue},
     StatusCode,
 };
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
 use super::definition::{GetAnnouncementMediaResponse, MeBody, MeResponse};
-use crate::appconfig::{ApplicationConfig, ApplicationConfigError};
+use crate::repositories::DeviceRepository;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct APIErrorResponse {
+pub struct ErrorObject {
     pub error_code: String,
     pub messages: Vec<String>,
 }
 
-pub enum APIResponse<T> {
-    Success(T),
-    Error(APIErrorResponse),
-}
-
-#[derive(Debug)]
+#[derive(Error, Debug)]
 pub enum ApiError {
+    #[error("Device is not linked yet")]
     NotAuthenticated(&'static str),
-    ReqwestError(reqwest::Error),
+    #[error("Request to Enchiridion API failed")]
+    ReqwestError(#[from] reqwest::Error),
+    #[error("An io error occurred")]
+    IoError(#[from] io::Error),
+    #[error("An application error occurred")]
     ApplicationError,
-}
-
-impl From<reqwest::Error> for ApiError {
-    fn from(err: reqwest::Error) -> Self {
-        ApiError::ReqwestError(err)
-    }
-}
-
-impl From<std::io::Error> for ApiError {
-    fn from(_err: std::io::Error) -> Self {
-        ApiError::NotAuthenticated("Failed to load application configuration")
-    }
-}
-
-impl From<ApplicationConfigError> for ApiError {
-    fn from(err: ApplicationConfigError) -> Self {
-        match err {
-            ApplicationConfigError::ConfigurationUnavailable(message)
-            | ApplicationConfigError::AuthenticationUnavailable(message) => {
-                ApiError::NotAuthenticated(message)
-            }
-            _ => ApiError::ApplicationError,
-        }
-    }
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct AuthKeys {
-    pub access_key_id: String,
-    pub secret_access_key: String,
+    #[error("An error has occurred from the API")]
+    ClientError(ErrorObject),
 }
 
 pub struct EnchiridionApi {
     base_url: String,
     client: reqwest::Client,
-    directory: path::PathBuf,
+
+    _device_repository: Arc<DeviceRepository>,
 }
 
 impl EnchiridionApi {
-    pub fn new(directory: path::PathBuf, base_url: String) -> Self {
+    pub fn new(base_url: String, _device_repository: Arc<DeviceRepository>) -> Self {
         let client = reqwest::Client::new();
 
-        EnchiridionApi { client, directory, base_url }
+        EnchiridionApi {
+            base_url,
+            client,
+            _device_repository,
+        }
     }
 
-    pub fn get_auth_headers(&self) -> Result<HeaderMap, ApiError> {
-        let keys = match ApplicationConfig::load(self.directory.clone())?.auth {
-            Some(keys) => keys,
-            None => return Err(ApiError::NotAuthenticated("Device is not linked")),
+    pub async fn get_auth_headers(&self) -> Result<HeaderMap, ApiError> {
+        let device = match self._device_repository.find().await {
+            Ok(device) => device,
+            Err(_) => return Err(ApiError::NotAuthenticated("This device is not linked yet")),
         };
 
         let mut headers = HeaderMap::new();
         headers.insert(
             "access-key-id",
-            HeaderValue::from_str(&keys.access_key_id).unwrap(),
+            HeaderValue::from_str(&device.access_key_id).unwrap(),
         );
         headers.insert(
             "secret-access-key",
-            HeaderValue::from_str(&keys.secret_access_key).unwrap(),
+            HeaderValue::from_str(&device.secret_access_key).unwrap(),
         );
 
         Ok(headers)
@@ -96,7 +73,7 @@ impl EnchiridionApi {
         access_key_id: String,
         secret_access_key: String,
         camera_enabled: bool,
-    ) -> Result<APIResponse<()>, ApiError> {
+    ) -> Result<(), ApiError> {
         let response = self
             .client
             .put(format!("{}/v1/link", self.base_url))
@@ -109,26 +86,22 @@ impl EnchiridionApi {
             .await?;
 
         match response.status() {
-            StatusCode::NO_CONTENT => Ok(APIResponse::Success(())),
-            _ => Ok(APIResponse::Error(
-                response.json::<APIErrorResponse>().await?,
-            )),
+            StatusCode::NO_CONTENT => Ok(()),
+            _ => Err(ApiError::ClientError(response.json::<ErrorObject>().await?)),
         }
     }
 
-    pub async fn unlink(&self) -> Result<APIResponse<()>, ApiError> {
+    pub async fn unlink(&self) -> Result<(), ApiError> {
         let response = self
             .client
             .put(format!("{}/v1/unlink", self.base_url))
-            .headers(self.get_auth_headers()?)
+            .headers(self.get_auth_headers().await?)
             .send()
             .await?;
 
         match response.status() {
-            StatusCode::NO_CONTENT => Ok(APIResponse::Success(())),
-            _ => Ok(APIResponse::Error(
-                response.json::<APIErrorResponse>().await?,
-            )),
+            StatusCode::NO_CONTENT => Ok(()),
+            _ => Err(ApiError::ClientError(response.json::<ErrorObject>().await?)),
         }
     }
 
@@ -136,7 +109,7 @@ impl EnchiridionApi {
         &self,
         access_key_id: String,
         secret_access_key: String,
-    ) -> Result<APIResponse<MeResponse>, ApiError> {
+    ) -> Result<MeResponse, ApiError> {
         let mut headers = HeaderMap::new();
         headers.insert(
             "access-key-id",
@@ -155,32 +128,28 @@ impl EnchiridionApi {
             .await?;
 
         match response.status() {
-            StatusCode::OK => Ok(APIResponse::Success(response.json::<MeResponse>().await?)),
-            _ => Ok(APIResponse::Error(
-                response.json::<APIErrorResponse>().await?,
-            )),
+            StatusCode::OK => Ok(response.json::<MeResponse>().await?),
+            _ => Err(ApiError::ClientError(response.json::<ErrorObject>().await?)),
         }
     }
 
-    pub async fn me(&self) -> Result<APIResponse<MeResponse>, ApiError> {
+    pub async fn me(&self) -> Result<MeResponse, ApiError> {
         let response = self
             .client
             .get(format!("{}/v1/me", self.base_url))
-            .headers(self.get_auth_headers()?)
+            .headers(self.get_auth_headers().await?)
             .send()
             .await?;
 
         match response.status() {
-            StatusCode::OK => Ok(APIResponse::Success(response.json::<MeResponse>().await?)),
-            _ => Ok(APIResponse::Error(
-                response.json::<APIErrorResponse>().await?,
-            )),
+            StatusCode::OK => Ok(response.json::<MeResponse>().await?),
+            _ => Err(ApiError::ClientError(response.json::<ErrorObject>().await?)),
         }
     }
 
     pub async fn get_announcement_media(
         &self,
-        announcement_id: i32,
+        announcement_id: i64,
     ) -> Result<GetAnnouncementMediaResponse, ApiError> {
         Ok(self
             .client
@@ -188,7 +157,7 @@ impl EnchiridionApi {
                 "{}/v1/announcements/{}/media",
                 self.base_url, announcement_id
             ))
-            .headers(self.get_auth_headers()?)
+            .headers(self.get_auth_headers().await?)
             .send()
             .await?
             .json::<GetAnnouncementMediaResponse>()

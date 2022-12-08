@@ -24,6 +24,7 @@ log = "0.4.17"
 chrono = "0.4.22"
 online = "4.0.0"
 sqlx = { version = "0.6", features = ["runtime-tokio-rustls", "sqlite", "macros", "offline", "chrono"] }
+thiserror = "1.0.37"
 
 [dependencies.tauri-plugin-log]
 git = "https://github.com/tauri-apps/tauri-plugin-log"

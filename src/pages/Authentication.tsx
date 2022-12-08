@@ -14,7 +14,6 @@ import {
   tauri,
   TauriErrorObject,
 } from "../tauri";
-import { getMatches } from '@tauri-apps/api/cli';
 import { ApplicationContext, ApplicationContextType } from "../context";
 import { ApplicationErrorCode } from "../constants";
 
@@ -50,13 +49,6 @@ const Authentication = () => {
       setLoading(false);
     }
   }, [accessKeyId, secretAccessKey]);
-
-  useEffect(() => {
-console.log('asd');
-    getMatches().then((matches) => {
-	console.log('matches: ', matches);
-    })
-  }, []);
 
   return (
     <Container

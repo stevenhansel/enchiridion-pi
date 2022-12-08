@@ -3,7 +3,7 @@ import { listen, UnlistenFn } from "@tauri-apps/api/event";
 import { ApplicationErrorCode } from "./constants";
 
 enum TauriCommands {
-  GetImages = "get_images",
+  GetAnnouncements = "get_announcements",
   GetDeviceInformation = "get_device_information",
   Link = "link",
   Unlink = "unlink",
@@ -30,6 +30,11 @@ export const isTauriErrorObject = <T>(
 
 export type TauriCommandResponse<T> = T | TauriErrorObject;
 
+export type Announcement = {
+  announcement_id: number;
+  local_path: string;
+}
+
 export type DeviceInformation = {
   id: number;
   name: string;
@@ -41,9 +46,9 @@ export type DeviceInformation = {
   updatedAt: string;
 };
 
-const getImages = async () => {
+const getAnnouncements = async () => {
   try {
-    const images: string[] = await invoke(TauriCommands.GetImages);
+    const images: Announcement[] = await invoke(TauriCommands.GetAnnouncements);
 
     return images;
   } catch (err) {
@@ -88,12 +93,14 @@ export const listenToMediaUpdateEnd = async (
 
 export const link = async (
   accessKeyId: string,
-  secretAccessKey: string
+  secretAccessKey: string,
+  cameraEnabled: boolean,
 ): Promise<TauriCommandResponse<DeviceInformation>> => {
   try {
     const device = await invoke(TauriCommands.Link, {
       accessKeyId,
       secretAccessKey,
+      cameraEnabled,
     });
 
     return device as DeviceInformation;
@@ -124,7 +131,7 @@ export const spawnAnnouncementConsumer = async () => {
 };
 
 export const tauri = {
-  getImages,
+  getAnnouncements,
   getDeviceInformation,
   link,
   unlink,

@@ -11,12 +11,12 @@ pub struct MeBody {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MeResponse {
-    pub id: i32,
+    pub id: i64,
     pub access_key_id: String,
     pub name: String,
     pub location: DeviceLocation,
     pub description: String,
-    pub active_announcements: i32,
+    pub active_announcements: i64,
     pub camera_enabled: bool,
     pub created_at: String,
     pub updated_at: String,
@@ -33,14 +33,14 @@ pub struct DeviceLocation {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DeviceLocationFloor {
-    pub id: i32,
+    pub id: i64,
     pub name: String,
 }
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DeviceLocationBuilding {
-    pub id: i32,
+    pub id: i64,
     pub name: String,
     pub color: String,
 }

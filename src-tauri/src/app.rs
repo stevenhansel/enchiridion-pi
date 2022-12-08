@@ -1,4 +1,4 @@
-use std::{fs, str::FromStr};
+use std::{fs, str::FromStr, sync::Arc};
 
 use log::LevelFilter;
 use sqlx::{
@@ -7,7 +7,13 @@ use sqlx::{
 };
 use tauri_plugin_log::{fern::colors::ColoredLevelConfig, LogTarget, LoggerBuilder};
 
-use crate::{commands, settings::Settings};
+use crate::{
+    api::EnchiridionApi,
+    commands,
+    repositories::{AnnouncementRepository, DeviceRepository},
+    services::{AnnouncementService, DeviceService},
+    settings::Settings,
+};
 
 #[tokio::main]
 pub async fn run() {
@@ -41,6 +47,24 @@ pub async fn run() {
 
     let migrator_pool = pool.clone();
 
+    let device_repository = Arc::new(DeviceRepository::new(pool.clone()));
+    let announcement_repository = Arc::new(AnnouncementRepository::new(pool.clone()));
+
+    let enchiridion_api = Arc::new(EnchiridionApi::new(
+        settings.enchiridion_api_base_url.to_string(),
+        device_repository.clone(),
+    ));
+
+    let device_service = Arc::new(DeviceService::new(
+        device_repository.clone(),
+        enchiridion_api.clone(),
+    ));
+    let announcement_service = Arc::new(AnnouncementService::new(
+        app_local_data_dir.clone(),
+        announcement_repository.clone(),
+        enchiridion_api.clone(),
+    ));
+
     tauri::Builder::default()
         .setup(move |app| {
             let migrations_path = app.path_resolver().resolve_resource("migrations").unwrap();
@@ -54,6 +78,11 @@ pub async fn run() {
             Ok(())
         })
         .manage(settings)
+        .manage(app_local_data_dir)
+        .manage(pool)
+        .manage(device_service)
+        .manage(announcement_service)
+        // TODO: Find out why log plugin not running under tokio runtime
         .plugin(
             LoggerBuilder::default()
                 .with_colors(ColoredLevelConfig::default())
@@ -64,7 +93,7 @@ pub async fn run() {
                 .build(),
         )
         .invoke_handler(tauri::generate_handler![
-            commands::get_images,
+            commands::get_announcements,
             commands::get_device_information,
             commands::link,
             commands::unlink,
@@ -75,5 +104,5 @@ pub async fn run() {
         .run(tauri::generate_context!())
         .unwrap_or_else(|_| log::warn!("Something when wrong when initializing the application"));
 
-    log::info!("Application has started running");
+    println!("Application has started running");
 }
