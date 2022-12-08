@@ -100,7 +100,7 @@ impl AnnouncementService {
         let filetype = filetype[filetype.len() - 1];
 
         let filename = format!("{}.{}", announcement_id, filetype);
-        let file_path = self._images_dir.clone().join(filename);
+        let file_path = self._images_dir.clone().join(filename.clone());
 
         let mut file = match File::create(file_path.clone()) {
             Ok(file) => file,
@@ -113,7 +113,7 @@ impl AnnouncementService {
             return Err(CreateAnnouncementError::Unknown);
         }
 
-        let local_path = file_path.to_str().unwrap().to_string();
+        let local_path = format!("images/{}", filename);
 
         self._announcement_repository
             .insert(InsertAnnouncementParams {

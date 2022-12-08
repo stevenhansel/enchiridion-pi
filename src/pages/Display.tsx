@@ -36,22 +36,25 @@ const Display = () => {
   const getAnnouncementMedias = async () => {
     try {
       const appDataDirPath = await appDataDir();
-      console.log("appDataDir: ", appDataDirPath);
 
       const rawAnnouncements = await tauri.getAnnouncements();
-      const announcements = await Promise.all(rawAnnouncements.map(async (announcement) => {
-        const image_path = await join(appDataDirPath, `images/${announcement.announcement_id}.jpeg`);
-	const local_path = convertFileSrc(image_path);
-	console.log('local_path; ', local_path);
+      const announcements = await Promise.all(
+        rawAnnouncements.map(async (announcement) => {
+          const image_path = await join(
+            appDataDirPath,
+            announcement.local_path
+          );
 
-	return {
-		id: announcement.id,
-		announcement_id: announcement.announcement_id,
-		local_path,
-	};
-      }));
+          const local_path = convertFileSrc(image_path);
 
-      console.log("announcements: ", announcements);
+          return {
+            id: announcement.id,
+            announcement_id: announcement.announcement_id,
+            local_path,
+          };
+        })
+      );
+
       if (announcements.length === 0) {
         setAnnouncements([]);
         return;

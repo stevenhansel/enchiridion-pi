@@ -31,6 +31,7 @@ export const isTauriErrorObject = <T>(
 export type TauriCommandResponse<T> = T | TauriErrorObject;
 
 export type Announcement = {
+  id: number;
   announcement_id: number;
   local_path: string;
 }
