@@ -75,8 +75,10 @@ const Display = () => {
 
   const initializeAnnouncementMedia = async () => {
     try {
-      const isEnabled = await isCameraEnabled();
-      console.log('isEnabled: ', isEnabled);
+      const isCameraModuleEnabled = await isCameraEnabled();
+      if (isCameraModuleEnabled) {
+        await spawnCamera();
+      }
 
       await spawnAnnouncementConsumer();
       await getAnnouncementMedias();
