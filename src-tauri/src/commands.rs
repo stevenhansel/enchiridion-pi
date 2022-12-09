@@ -167,7 +167,7 @@ pub async fn spawn_camera(
         Err(e) => return Err(CommandError::new(e.to_string(), vec![])),
     };
 
-    let device_id = device.id.to_string();
+    let device_id = device.device_id.to_string();
     let device_id = device_id.as_str();
 
     let (mut rx, _child) = Command::new_sidecar("camera")
