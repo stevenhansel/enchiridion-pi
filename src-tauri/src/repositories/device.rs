@@ -128,4 +128,29 @@ impl DeviceRepository {
 
         Ok(())
     }
+
+    pub async fn update_camera_enabled(
+        &self,
+        device_id: i64,
+        camera_enabled: bool,
+    ) -> Result<(), sqlx::Error> {
+        let rows_affected = sqlx::query(
+            r#"
+            UPDATE "device"
+            SET camera_enabled = ?2
+            WHERE id = ?1
+            "#,
+        )
+        .bind(device_id)
+        .bind(camera_enabled)
+        .execute(&self._db)
+        .await?
+        .rows_affected();
+
+        if rows_affected == 0 {
+            return Err(sqlx::Error::RowNotFound);
+        }
+
+        Ok(())
+    }
 }

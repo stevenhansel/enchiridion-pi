@@ -7,7 +7,9 @@ use reqwest::{
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use super::definition::{GetAnnouncementMediaResponse, MeBody, MeResponse};
+use super::definition::{
+    GetAnnouncementMediaResponse, MeBody, MeResponse, UpdateCameraEnabledBody,
+};
 use crate::repositories::DeviceRepository;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -162,5 +164,20 @@ impl EnchiridionApi {
             .await?
             .json::<GetAnnouncementMediaResponse>()
             .await?)
+    }
+
+    pub async fn update_camera_enabled(&self, camera_enabled: bool) -> Result<(), ApiError> {
+        let response = self
+            .client
+            .put(format!("{}/v1/camera", self.base_url))
+            .headers(self.get_auth_headers().await?)
+            .json(&UpdateCameraEnabledBody { camera_enabled })
+            .send()
+            .await?;
+
+        match response.status() {
+            StatusCode::NO_CONTENT => Ok(()),
+            _ => Err(ApiError::ClientError(response.json::<ErrorObject>().await?)),
+        }
     }
 }

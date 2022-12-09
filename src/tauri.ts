@@ -8,6 +8,7 @@ enum TauriCommands {
   Link = "link",
   Unlink = "unlink",
   IsNetworkConnected = "is_network_connected",
+  IsCameraEnabled = "is_camera_enabled",
   SpawnCamera = "spawn_camera",
   SpawnAnnouncementConsumer = "spawn_announcement_consumer",
 }
@@ -34,7 +35,7 @@ export type Announcement = {
   id: number;
   announcement_id: number;
   local_path: string;
-}
+};
 
 export type DeviceInformation = {
   id: number;
@@ -95,7 +96,7 @@ export const listenToMediaUpdateEnd = async (
 export const link = async (
   accessKeyId: string,
   secretAccessKey: string,
-  cameraEnabled: boolean,
+  cameraEnabled: boolean
 ): Promise<TauriCommandResponse<DeviceInformation>> => {
   try {
     const device = await invoke(TauriCommands.Link, {
@@ -123,6 +124,10 @@ export const isNetworkConnected = async () => {
   return isNetworkConnected as boolean;
 };
 
+export const isCameraEnabled = async () => {
+  return (await invoke(TauriCommands.IsCameraEnabled)) as boolean;
+};
+
 export const spawnCamera = async () => {
   await invoke(TauriCommands.SpawnCamera);
 };
@@ -137,6 +142,7 @@ export const tauri = {
   link,
   unlink,
   isNetworkConnected,
+  isCameraEnabled,
   spawnCamera,
   spawnAnnouncementConsumer,
 };

@@ -51,3 +51,10 @@ pub struct GetAnnouncementMediaResponse {
     pub filename: String,
     pub media: String,
 }
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateCameraEnabledBody {
+    pub camera_enabled: bool,
+}
+

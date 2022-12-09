@@ -1,10 +1,11 @@
 import { Box } from "@mui/system";
 import { Typography } from "@mui/material";
+import { appDataDir, join } from "@tauri-apps/api/path";
+import { convertFileSrc } from "@tauri-apps/api/tauri";
+import { getMatches } from "@tauri-apps/api/cli";
 import { useCallback, useContext, useEffect, useState } from "react";
 import { ApplicationErrorCode } from "../constants";
 import { ApplicationContext, ApplicationContextType } from "../context";
-import { appDataDir, join } from "@tauri-apps/api/path";
-import { convertFileSrc } from "@tauri-apps/api/tauri";
 
 import {
   listenToMediaUpdateStart,
@@ -13,6 +14,7 @@ import {
   spawnAnnouncementConsumer,
   tauri,
   Announcement,
+  isCameraEnabled,
 } from "../tauri";
 import ApplicationSettings from "./ApplicationSettings";
 
@@ -71,26 +73,30 @@ const Display = () => {
     }
   };
 
-  const initializeAnnouncementMedia = () => {
-    spawnAnnouncementConsumer()
-      .then(() => spawnCamera())
-      .then(() => getAnnouncementMedias())
-      .then(() => {
-        startCarousel();
+  const initializeAnnouncementMedia = async () => {
+    try {
+      const isEnabled = await isCameraEnabled();
+      console.log('isEnabled: ', isEnabled);
 
-        listenToMediaUpdateStart(() => {
-          setLoading(true);
-          pauseCarousel();
-        });
+      await spawnAnnouncementConsumer();
+      await getAnnouncementMedias();
 
-        listenToMediaUpdateEnd(async () => {
-          await getAnnouncementMedias();
+      startCarousel();
 
-          setLoading(false);
-          continueCarousel();
-        });
-      })
-      .catch((err) => console.error(err));
+      listenToMediaUpdateStart(() => {
+        setLoading(true);
+        pauseCarousel();
+      });
+
+      listenToMediaUpdateEnd(async () => {
+        await getAnnouncementMedias();
+
+        setLoading(false);
+        continueCarousel();
+      });
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const handleSettingsKeydownEvent = useCallback((event: KeyboardEvent) => {

@@ -76,21 +76,18 @@ pub async fn link(
         .await
     {
         Ok(device) => Ok(device),
-        Err(e) => {
-            println!("e: {:?}", e);
-            match e {
-                LinkDeviceError::ApiError(api_error) => match api_error {
-                    ApiError::ClientError(client_error) => {
-                        return Err(CommandError::new(
-                            client_error.error_code,
-                            client_error.messages,
-                        ))
-                    }
-                    _ => return Err(CommandError::new(api_error.to_string(), vec![])),
-                },
-                _ => return Err(CommandError::new(e.to_string(), vec![])),
-            }
-        }
+        Err(e) => match e {
+            LinkDeviceError::ApiError(api_error) => match api_error {
+                ApiError::ClientError(client_error) => {
+                    return Err(CommandError::new(
+                        client_error.error_code,
+                        client_error.messages,
+                    ))
+                }
+                _ => return Err(CommandError::new(api_error.to_string(), vec![])),
+            },
+            _ => return Err(CommandError::new(e.to_string(), vec![])),
+        },
     }
 }
 
@@ -121,6 +118,43 @@ pub async fn is_network_connected() -> bool {
     } else {
         return false;
     }
+}
+
+#[tauri::command]
+pub async fn is_camera_enabled(device_service: State<'_, Arc<DeviceService>>) -> Result<bool, ()> {
+    let stdout = match Command::new("printenv").output() {
+        Ok(output) => output.stdout,
+        Err(_) => return Ok(false),
+    };
+
+    let raw_envs = stdout
+        .split('\n')
+        .map(|str| str.to_string())
+        .collect::<Vec<String>>();
+
+    let mut envs: Vec<(String, String)> = Vec::new();
+    for raw in raw_envs {
+        let splitted: Vec<String> = raw.split("=").map(|str| str.to_string()).collect();
+        if splitted.len() < 2 {
+            continue;
+        }
+
+        envs.push((splitted[0].clone(), splitted[1].clone()));
+    }
+
+    let enabled = match envs.into_iter().find(|env| env.0 == "CAMERA") {
+        Some(env) => match env.1.parse::<bool>() {
+            Ok(enabled) => enabled,
+            Err(_) => false,
+        },
+        None => false,
+    };
+
+    if let Err(_) = device_service.update_camera_enabled(enabled).await {
+        return Ok(false);
+    }
+
+    Ok(enabled)
 }
 
 #[tauri::command]
