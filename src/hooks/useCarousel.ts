@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 export type CarouselState = {
   index: number;
+  durations: number[];
   isStart: boolean;
   isPaused: boolean;
   startCarousel: () => void;
@@ -9,10 +10,12 @@ export type CarouselState = {
   pauseCarousel: () => void;
   continueCarousel: () => void;
   updateMax: (max: number) => void;
+  setDurations: (durations: number[]) => void;
 };
 
 export const defaultCarouselState = (): CarouselState => ({
   index: 0,
+  durations: [],
   isStart: false,
   isPaused: false,
   startCarousel: () => {},
@@ -20,15 +23,15 @@ export const defaultCarouselState = (): CarouselState => ({
   pauseCarousel: () => {},
   continueCarousel: () => {},
   updateMax: (_max: number) => {},
+  setDurations: (_durations: number[]) => {},
 });
 
-const useCarousel = (interval: number) => {
+const useCarousel = () => {
   const [index, setIndex] = useState(0);
+  const [durations, setDurations] = useState<number[]>([]);
   const [max, setMax] = useState<number | null>(null);
   const [isStart, setIsStart] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
-
-  const tick = useRef(0);
 
   const startCarousel = useCallback(() => setIsStart(true), []);
 
@@ -41,26 +44,21 @@ const useCarousel = (interval: number) => {
   const updateMax = useCallback((max: number) => setMax(max), []);
 
   useEffect(() => {
-    if (!isStart) return;
+    if (isStart === false || isPaused === true) return;
+    const timeout = setTimeout(() => {
+      setIndex((previousIndex) =>
+        previousIndex + 1 === max ? 0 : previousIndex + 1
+      );
+    }, durations[index]);
 
-    if (max !== null) {
-      if (!tick.current && !isPaused) {
-        tick.current = setInterval(() => {
-          setIndex((previousIndex) =>
-            previousIndex + 1 === max ? 0 : previousIndex + 1
-          );
-        }, interval);
-      } else {
-        clearInterval(tick.current);
-        tick.current = 0;
-      }
-    }
-
-    return () => clearInterval(tick.current);
-  }, [max, isStart, isPaused]);
+    return () => {
+      clearTimeout(timeout);
+    };
+  }, [index, durations, isStart, isPaused]);
 
   return {
     index,
+    durations,
     isStart,
     isPaused,
     startCarousel,
@@ -68,6 +66,7 @@ const useCarousel = (interval: number) => {
     pauseCarousel,
     continueCarousel,
     updateMax,
+    setDurations,
   };
 };
 

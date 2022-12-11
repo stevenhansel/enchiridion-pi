@@ -82,6 +82,24 @@ impl AnnouncementService {
             }
         };
 
+        let media_type = match payload.media_type.clone() {
+            Some(media_type) => media_type,
+            None => {
+                return Err(CreateAnnouncementError::InvalidPayload(
+                    "Media type should not be null",
+                ))
+            }
+        };
+
+        let media_duration = match payload.media_duration {
+            Some(duration) => duration,
+            None => {
+                return Err(CreateAnnouncementError::InvalidPayload(
+                    "Media duration should not be null",
+                ))
+            }
+        };
+
         let presigned = self
             ._enchiridion_api
             .get_announcement_media(announcement_id)
@@ -119,6 +137,8 @@ impl AnnouncementService {
             .insert(InsertAnnouncementParams {
                 announcement_id,
                 local_path,
+                media_type,
+                media_duration,
             })
             .await?;
 
