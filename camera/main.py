@@ -2,6 +2,7 @@ import subprocess
 import time
 import threading
 import os
+import datetime
 from math import sqrt
 
 import argparse
@@ -26,6 +27,9 @@ class Runtime:
         self.srs_ip = srs_ip
 
     def run(self):
+        # threading.Thread(target=self.timeseries).start()
+        # self.camera()
+
         threads = [
             threading.Thread(target=self.camera),
             threading.Thread(target=self.gstreamer),
@@ -47,12 +51,12 @@ class Runtime:
         detected_faces = []
 
         while True:
-            self.mutex.acquire()
-
             ret, frame = cap.read()
             frame = cv2.flip(frame, 1)
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
             faces = detector(frame)
+
+            self.mutex.acquire()
 
             if len(faces) == 0:
                 detected_faces = []
@@ -121,7 +125,6 @@ class Runtime:
                             cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
                     
             self.num_of_faces = len(detected_faces)
-
             self.mutex.release()
 
             cv2.imshow(self.window_name, frame)
@@ -159,23 +162,17 @@ class Runtime:
 
         gstreamer_cmd = '''gst-launch-1.0 ximagesrc xid={pid} ! videoconvert ! x264enc speed-preset=ultrafast tune=zerolatency byte-stream=true ! queue ! flvmux name=muxer ! rtmpsink location="rtmp://{srs_ip}/live/livestream/{device_id} live=1"'''.format(pid=camera_frame_pid, srs_ip=self.srs_ip, device_id=self.device_id)
 
-
-        print("gstreamer_cmd: ", gstreamer_cmd, flush=True)
-        gst = subprocess.Popen(gstreamer_cmd, shell=True)
-        gst.wait()
-
-        # with open(os.devnull, 'w') as fp:
-            # gst = subprocess.Popen(gstreamer_cmd, shell=True, stdout=fp)
-            # gst.wait()
-
-
+        with open(os.devnull, 'w') as fp:
+            gst = subprocess.Popen(gstreamer_cmd, shell=True, stdout=fp)
+            gst.wait()
 
     def timeseries(self):
         while True:
             time.sleep(1)
 
             self.mutex.acquire()
-            print("num_of_faces ", self.num_of_faces, flush=True)
+            timestamp = datetime.datetime.now(datetime.timezone.utc)
+            print("{timestamp} {device_id} {num_of_faces}".format(timestamp=timestamp.isoformat(), device_id=self.device_id, num_of_faces=self.num_of_faces), flush=True)
             self.mutex.release()
 
     def wmctrl_focuser(self):
@@ -196,10 +193,8 @@ class Runtime:
 
                 focus_cmd = "wmctrl -a {application_name}".format(application_name=self.application_name)
                 with open(os.devnull, 'w') as fp:
-                    gst = subprocess.Popen(focus_cmd, shell=True, stdout=fp)
-                    gst.wait()
-
-                    is_focused = True
+                    ps = subprocess.Popen(focus_cmd, shell=True, stdout=fp)
+                    ps.wait()
             except:
                 print("Unable to find window with the name of {application_name}".format(application_name=self.application_name), flush=True)
 

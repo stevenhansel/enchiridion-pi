@@ -1,4 +1,4 @@
-use std::{path::PathBuf, str::FromStr, sync::Arc};
+use std::{collections::BTreeMap, path::PathBuf, str::FromStr, sync::Arc};
 
 use online::check;
 use serde::Serialize;
@@ -12,6 +12,7 @@ use crate::{
     api::{ApiError, EnchiridionApi},
     consumer,
     domain::{Announcement, Device},
+    queue::Producer,
     repositories::{AnnouncementRepository, DeviceRepository},
     services::{AnnouncementService, DeviceService, LinkDeviceError, UnlinkDeviceError},
     settings::Settings,
@@ -71,10 +72,7 @@ pub async fn link(
     access_key_id: String,
     secret_access_key: String,
 ) -> Result<Device, CommandError> {
-    match device_service
-        .link(access_key_id, secret_access_key)
-        .await
-    {
+    match device_service.link(access_key_id, secret_access_key).await {
         Ok(device) => Ok(device),
         Err(e) => match e {
             LinkDeviceError::ApiError(api_error) => match api_error {
@@ -183,6 +181,8 @@ pub async fn spawn_status_poller(
     Ok(())
 }
 
+const DEVICE_LIVESTREAM_QUEUE_NAME: &'static str = "device_livestream";
+
 #[tauri::command]
 pub async fn spawn_camera(
     settings: State<'_, Settings>,
@@ -193,6 +193,15 @@ pub async fn spawn_camera(
         Err(e) => return Err(CommandError::new(e.to_string(), vec![])),
     };
 
+    let redis_addr = settings.redis_addr.clone();
+
+    let redis_config = deadpool_redis::Config::from_url(redis_addr);
+    let redis_pool = redis_config
+        .create_pool(Some(deadpool_redis::Runtime::Tokio1))
+        .expect("[error] Failed to open redis connection");
+
+    let producer = Producer::new(redis_pool, DEVICE_LIVESTREAM_QUEUE_NAME.to_string());
+
     let device_id = device.device_id.to_string();
     let device_id = device_id.as_str();
 
@@ -202,10 +211,17 @@ pub async fn spawn_camera(
         .spawn()
         .expect("Failed to spawn sidecar");
 
+    println!("Camera module is starting");
+
     async_runtime::spawn(async move {
         while let Some(event) = rx.recv().await {
             if let CommandEvent::Stdout(line) = event {
-                println!("{}", line);
+                let map = BTreeMap::from([(String::from("data"), line)]);
+
+                if let Err(_) = producer.push(map).await {
+                    eprintln!("Something when wrong when pushing the livestream data");
+                    continue;
+                };
             }
         }
     });
