@@ -17,7 +17,6 @@ pub async fn consume(
     announcement_service: Arc<AnnouncementService>,
 ) {
     let queue_name = format!("{}{}", QUEUE_NAME_PREFIX, device.device_id);
-    println!("queue_name: {}", queue_name);
     let mut consumer = Consumer::new(redis, queue_name);
 
     loop {

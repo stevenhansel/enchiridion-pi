@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useContext, useState } from "react";
+import { useCallback, useContext, useState } from "react";
 import {
   Button,
   Box,
@@ -25,13 +25,12 @@ const Authentication = () => {
 
   const [accessKeyId, setAccessKeyId] = useState("");
   const [secretAccessKey, setSecretAccessKey] = useState("");
-  const [cameraEnabled, setCameraEnabled] = useState(false);
 
   const link = useCallback(async () => {
     try {
       setLoading(true);
 
-      const response = await tauri.link(accessKeyId, secretAccessKey, cameraEnabled);
+      const response = await tauri.link(accessKeyId, secretAccessKey);
       if (isTauriErrorObject<DeviceInformation>(response)) {
         let { errorCode, messages } = response as TauriErrorObject;
         setError({ code: errorCode, message: messages[0] });
