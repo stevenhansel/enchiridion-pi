@@ -74,7 +74,6 @@ impl EnchiridionApi {
         &self,
         access_key_id: String,
         secret_access_key: String,
-        camera_enabled: bool,
     ) -> Result<(), ApiError> {
         let response = self
             .client
@@ -82,7 +81,6 @@ impl EnchiridionApi {
             .json(&MeBody {
                 access_key_id,
                 secret_access_key,
-                camera_enabled,
             })
             .send()
             .await?;

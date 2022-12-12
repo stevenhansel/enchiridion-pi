@@ -5,7 +5,6 @@ use serde::{Deserialize, Serialize};
 pub struct MeBody {
     pub access_key_id: String,
     pub secret_access_key: String,
-    pub camera_enabled: bool,
 }
 
 #[derive(Deserialize)]
@@ -57,4 +56,3 @@ pub struct GetAnnouncementMediaResponse {
 pub struct UpdateCameraEnabledBody {
     pub camera_enabled: bool,
 }
-

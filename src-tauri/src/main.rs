@@ -10,6 +10,7 @@ pub mod queue;
 pub mod repositories;
 pub mod services;
 pub mod settings;
+pub mod status;
 
 pub mod app;
 pub mod commands;

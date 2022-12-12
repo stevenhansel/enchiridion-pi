@@ -99,6 +99,7 @@ pub async fn run() {
             commands::unlink,
             commands::is_network_connected,
             commands::is_camera_enabled,
+            commands::spawn_status_poller,
             commands::spawn_camera,
             commands::spawn_announcement_consumer,
         ])

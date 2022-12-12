@@ -58,14 +58,9 @@ impl DeviceService {
         &self,
         access_key_id: String,
         secret_access_key: String,
-        camera_enabled: bool,
     ) -> Result<Device, LinkDeviceError> {
         self._enchiridion_api
-            .link(
-                access_key_id.clone(),
-                secret_access_key.clone(),
-                camera_enabled,
-            )
+            .link(access_key_id.clone(), secret_access_key.clone())
             .await?;
 
         let device = self

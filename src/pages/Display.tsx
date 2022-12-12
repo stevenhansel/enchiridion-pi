@@ -2,7 +2,6 @@ import { Box } from "@mui/system";
 import { Typography } from "@mui/material";
 import { appDataDir, join } from "@tauri-apps/api/path";
 import { convertFileSrc } from "@tauri-apps/api/tauri";
-import { getMatches } from "@tauri-apps/api/cli";
 import { useCallback, useContext, useEffect, useState } from "react";
 import { ApplicationErrorCode } from "../constants";
 import { ApplicationContext, ApplicationContextType } from "../context";
@@ -10,6 +9,7 @@ import { ApplicationContext, ApplicationContextType } from "../context";
 import {
   listenToMediaUpdateStart,
   listenToMediaUpdateEnd,
+  spawnStatusPoller,
   spawnCamera,
   spawnAnnouncementConsumer,
   tauri,
@@ -80,6 +80,7 @@ const Display = () => {
         await spawnCamera();
       }
 
+      await spawnStatusPoller();
       await spawnAnnouncementConsumer();
       await getAnnouncementMedias();
 

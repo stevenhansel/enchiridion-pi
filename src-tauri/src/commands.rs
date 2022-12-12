@@ -15,6 +15,7 @@ use crate::{
     repositories::{AnnouncementRepository, DeviceRepository},
     services::{AnnouncementService, DeviceService, LinkDeviceError, UnlinkDeviceError},
     settings::Settings,
+    status,
 };
 
 #[derive(Debug, Serialize)]
@@ -69,10 +70,9 @@ pub async fn link(
     device_service: State<'_, Arc<DeviceService>>,
     access_key_id: String,
     secret_access_key: String,
-    camera_enabled: bool,
 ) -> Result<Device, CommandError> {
     match device_service
-        .link(access_key_id, secret_access_key, camera_enabled)
+        .link(access_key_id, secret_access_key)
         .await
     {
         Ok(device) => Ok(device),
@@ -155,6 +155,32 @@ pub async fn is_camera_enabled(device_service: State<'_, Arc<DeviceService>>) ->
     }
 
     Ok(enabled)
+}
+
+#[tauri::command]
+pub async fn spawn_status_poller(
+    settings: State<'_, Settings>,
+    device_service: State<'_, Arc<DeviceService>>,
+) -> Result<(), CommandError> {
+    let device = match device_service.get_device().await {
+        Ok(device) => device,
+        Err(e) => return Err(CommandError::new(e.to_string(), vec![])),
+    };
+
+    let device_id = device.device_id;
+
+    let redis_addr = settings.redis_addr.clone();
+
+    async_runtime::spawn(async move {
+        let redis_config = deadpool_redis::Config::from_url(redis_addr);
+        let redis_pool = redis_config
+            .create_pool(Some(deadpool_redis::Runtime::Tokio1))
+            .expect("[error] Failed to open redis connection");
+
+        status::run(redis_pool, device_id).await;
+    });
+
+    Ok(())
 }
 
 #[tauri::command]
