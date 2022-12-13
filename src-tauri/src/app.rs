@@ -97,6 +97,7 @@ pub async fn run() {
             commands::get_device_information,
             commands::link,
             commands::unlink,
+            commands::get_announcement_media,
             commands::is_network_connected,
             commands::is_camera_enabled,
             commands::spawn_status_poller,

@@ -9,3 +9,9 @@ pub struct Announcement {
     pub media_type: String,
     pub media_duration: Option<f64>,
 }
+
+#[derive(Serialize, Deserialize)]
+pub struct AnnouncementMedia {
+    pub filename: String,
+    pub media: String,
+}

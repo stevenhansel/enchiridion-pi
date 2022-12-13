@@ -1,6 +1,6 @@
 import { Box } from "@mui/system";
 import { Typography } from "@mui/material";
-import { useCallback, useContext, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useState, useMemo } from "react";
 import { ApplicationErrorCode, CAROUSEL_INTERVAL } from "../constants";
 import { ApplicationContext, ApplicationContextType } from "../context";
 import { appDataDir, dataDir, join } from "@tauri-apps/api/path";
@@ -24,6 +24,7 @@ const Display = () => {
     setLoading,
     setError,
     isNetworkConnected,
+    carouselIndex,
     carousel: {
       index,
       startCarousel,
@@ -42,15 +43,20 @@ const Display = () => {
       const appDataDirPath = await appDataDir();
 
       const rawAnnouncements = await tauri.getAnnouncements();
-      console.log('rawAnnouncements: ', rawAnnouncements);
       const announcements = await Promise.all(
         rawAnnouncements.map(async (announcement) => {
-          const image_path = await join(
-            appDataDirPath,
-            announcement.local_path
-          );
+	  let local_path: string;
+	  if (announcement.media_type === "image") {
+		  const image_path = await join(
+		    appDataDirPath,
+		    announcement.local_path
+		  );
 
-          const local_path = convertFileSrc(image_path);
+		  local_path = convertFileSrc(image_path);
+	  } else if (announcement.media_type === "video") {
+		 const response = await tauri.getAnnouncementMedia(announcement.id);
+	      	 local_path = response.media; 
+	  }
 
           return {
             id: announcement.id,
@@ -61,8 +67,6 @@ const Display = () => {
           };
         })
       );
-
-      console.log('announcements: ', announcements);
 
       const mediaDuration = announcements.map((a) => {
         if (a.media_duration !== null && a.media_type === "video") {
@@ -76,6 +80,7 @@ const Display = () => {
         setAnnouncements([]);
         return;
       }
+
       setAnnouncements(announcements);
       updateMax(announcements.length);
       setDurations(mediaDuration);
@@ -148,44 +153,61 @@ const Display = () => {
     }
   }, [isNetworkConnected]);
 
-  const media = () => {
-    if (announcements[index].media_type === "image") {
-      return (
-        <img
-          style={{
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            display: "block",
-            width: "100vw",
-            height: "auto",
-            objectFit: "cover",
-          }}
-          src={announcements[index].local_path}
-        />
-      );
-    } else if (announcements[index].media_type === "video") {
-      return (
-        <video
-          style={{
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            display: "block",
-            width: "100vw",
-            height: "auto",
-            objectFit: "cover",
-          }}
-          src={announcements[index].local_path}
-          controls
-          autoPlay
-          muted
-        />
-      );
+  useEffect(() => {
+    const announcement = announcements[index];
+    if (announcement && announcement.media_type === "video") {
+	const video = document.getElementById(`video-${index}`);
+
+	video.currentTime = 0;
     }
-  };
+  }, [announcements, index])
+
+console.log('announcements: ', announcements);
+console.log('carouselIndex.current', carouselIndex.current);
+
+  const announcementElements = useMemo(() => {
+	console.log('rerender triggered');
+	if (announcements.length === 0) return;
+
+	return announcements.map((announcement, i) => {
+		return (
+			<div key={i}>{announcement.media_type === "image" ? (
+				<img
+				  style={{
+				    position: "absolute",
+				    top: "50%",
+				    left: "50%",
+				    transform: "translate(-50%, -50%)",
+				    display: carouselIndex.current === i ? "block" : "none",
+				    width: "100vw",
+				    height: "auto",
+				    objectFit: "cover",
+				  }}
+				  src={announcement.local_path}
+				/>
+			) : (
+				<video
+				  id={`video-${i}`}
+				  style={{
+				    position: "absolute",
+				    top: "50%",
+				    left: "50%",
+				    transform: "translate(-50%, -50%)",
+				    display: carouselIndex.current === i ? "block" : "none",
+				    width: "100vw",
+				    height: "auto",
+				    objectFit: "cover",
+				  }}
+				  src={announcement.local_path}
+				  controls
+				  autoPlay
+				  muted
+				/>
+
+			)}</div>	
+		);
+	  })
+  }, [announcements]);
 
   return (
     <Box
@@ -198,7 +220,8 @@ const Display = () => {
     >
       {announcements.length > 0 ? (
         <>
-          {media()}
+	{announcementElements}
+
           <div style={{ position: "absolute", right: 25, bottom: 30 }}>
             <Typography variant="h6">
               Created By Steven Hansel, Lukas Linardi, and Rudy Susanto

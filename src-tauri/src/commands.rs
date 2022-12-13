@@ -11,7 +11,7 @@ use tauri::{
 use crate::{
     api::{ApiError, EnchiridionApi},
     consumer,
-    domain::{Announcement, Device},
+    domain::{Announcement, AnnouncementMedia, Device},
     queue::Producer,
     repositories::{AnnouncementRepository, DeviceRepository},
     services::{AnnouncementService, DeviceService, LinkDeviceError, UnlinkDeviceError},
@@ -82,9 +82,12 @@ pub async fn link(
                         client_error.messages,
                     ))
                 }
-                _ => return Err(CommandError::new(api_error.to_string(), vec![])),
+                _ => {
+                    println!("{:?}", api_error);
+                    return Err(CommandError::new(api_error.to_string(), vec![api_error.to_string()]))
+                },
             },
-            _ => return Err(CommandError::new(e.to_string(), vec![])),
+            _ => return Err(CommandError::new(e.to_string(), vec![e.to_string()])),
         },
     }
 }
@@ -107,6 +110,14 @@ pub async fn unlink(device_service: State<'_, Arc<DeviceService>>) -> Result<(),
     }
 
     Ok(())
+}
+
+#[tauri::command]
+pub async fn get_announcement_media(announcement_id: i32, announcement_service: State<'_, Arc<AnnouncementService>>) -> Result<AnnouncementMedia, CommandError> {
+    match announcement_service.get_announcement_media(announcement_id).await {
+        Ok(media) => Ok(media),
+        Err(e) => return Err(CommandError::new(e.to_string(), vec![e.to_string()]))
+    }
 }
 
 #[tauri::command]

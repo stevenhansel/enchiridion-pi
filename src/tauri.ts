@@ -12,6 +12,7 @@ enum TauriCommands {
   SpawnStatusPoller = "spawn_status_poller",
   SpawnCamera = "spawn_camera",
   SpawnAnnouncementConsumer = "spawn_announcement_consumer",
+  GetAnnouncementMedia = "get_announcement_media",
 }
 
 enum TauriEvents {
@@ -50,6 +51,11 @@ export type DeviceInformation = {
   createdAt: string;
   updatedAt: string;
 };
+
+export type AnnouncementMedia = {
+  filename: string;
+  media: string;
+}
 
 const getAnnouncements = async () => {
   try {
@@ -141,6 +147,15 @@ export const spawnAnnouncementConsumer = async () => {
   await invoke(TauriCommands.SpawnAnnouncementConsumer);
 };
 
+export const getAnnouncementMedia = async (announcementId: number) => {
+  try {
+    const response: AnnouncementMedia = await invoke(TauriCommands.GetAnnouncementMedia, { announcementId });
+    return response;
+  } catch (err) {
+    return err as TauriErrorObject;
+  }
+}
+
 export const tauri = {
   getAnnouncements,
   getDeviceInformation,
@@ -150,4 +165,5 @@ export const tauri = {
   isCameraEnabled,
   spawnCamera,
   spawnAnnouncementConsumer,
+  getAnnouncementMedia,
 };

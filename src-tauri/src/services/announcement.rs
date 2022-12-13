@@ -9,7 +9,7 @@ use thiserror::Error;
 use crate::{
     api::{ApiError, EnchiridionApi},
     consumer::announcement::definition::AnnouncementConsumerPayload,
-    domain::Announcement,
+    domain::{Announcement, AnnouncementMedia},
     repositories::{AnnouncementRepository, InsertAnnouncementParams},
 };
 
@@ -45,6 +45,12 @@ pub enum DeleteAnnouncementError {
 
 #[derive(Error, Debug)]
 pub enum ResyncAnnouncementError {}
+
+#[derive(Error, Debug)]
+pub enum GetAnnouncementMediaError {
+    #[error("An unknown error has occurred")]
+    Unknown,
+}
 
 pub struct AnnouncementService {
     _images_dir: PathBuf,
@@ -97,7 +103,6 @@ impl AnnouncementService {
             .await {
                 Ok(presigned) => presigned,
                 Err(e) => {
-                    println!("{:?}", e);
                     return Err(CreateAnnouncementError::Unknown);
                 }
             };
@@ -187,5 +192,22 @@ impl AnnouncementService {
         _payload: &AnnouncementConsumerPayload,
     ) -> Result<(), ResyncAnnouncementError> {
         Ok(())
+    }
+
+    pub async fn get_announcement_media(&self, announcement_id: i32) -> Result<AnnouncementMedia, GetAnnouncementMediaError> {
+        let presigned = match self
+            ._enchiridion_api
+            .get_announcement_media(announcement_id.into())
+            .await {
+                Ok(presigned) => presigned,
+                Err(e) => {
+                    return Err(GetAnnouncementMediaError::Unknown);
+                }
+            };
+
+        Ok(AnnouncementMedia {
+            filename: presigned.filename,
+            media: presigned.media
+        })
     }
 }
