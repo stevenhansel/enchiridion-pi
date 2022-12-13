@@ -7,10 +7,7 @@ import {
 } from "@mui/material";
 import WifiOffIcon from "@mui/icons-material/WifiOff";
 import { useEffect, useState } from "react";
-import {
-  ApplicationError,
-  NETWORK_CONNECTION_CHECK_MS,
-} from "./constants";
+import { ApplicationError, NETWORK_CONNECTION_CHECK_MS } from "./constants";
 import { ApplicationContext } from "./context";
 import { useCarousel } from "./hooks";
 

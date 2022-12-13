@@ -46,9 +46,11 @@ const useCarousel = () => {
   useEffect(() => {
     if (isStart === false || isPaused === true) return;
     const timeout = setTimeout(() => {
-      setIndex((previousIndex) =>
-        previousIndex + 1 === max ? 0 : previousIndex + 1
-      );
+      setIndex((previousIndex) => {
+        const updatedIndex = previousIndex + 1 === max ? 0 : previousIndex + 1;
+
+        return updatedIndex;
+      });
     }, durations[index]);
 
     return () => {
