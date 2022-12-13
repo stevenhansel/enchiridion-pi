@@ -82,10 +82,25 @@ impl AnnouncementService {
             }
         };
 
-        let presigned = self
+        let media_type = match payload.media_type.clone() {
+            Some(media_type) => media_type,
+            None => {
+                return Err(CreateAnnouncementError::InvalidPayload(
+                    "Media type should not be null",
+                ))
+            }
+        };
+
+        let presigned = match self
             ._enchiridion_api
             .get_announcement_media(announcement_id)
-            .await?;
+            .await {
+                Ok(presigned) => presigned,
+                Err(e) => {
+                    println!("{:?}", e);
+                    return Err(CreateAnnouncementError::Unknown);
+                }
+            };
 
         let image = reqwest::get(presigned.media).await?;
         let mut image_bytes = Cursor::new(image.bytes().await?);
@@ -119,6 +134,8 @@ impl AnnouncementService {
             .insert(InsertAnnouncementParams {
                 announcement_id,
                 local_path,
+                media_type,
+                media_duration: payload.media_duration,
             })
             .await?;
 
@@ -134,7 +151,8 @@ impl AnnouncementService {
             None => {
                 return Err(DeleteAnnouncementError::InvalidPayload(
                     "Announcement Id should not be null",
-                ))
+                )
+            )
             }
         };
 

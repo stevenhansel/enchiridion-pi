@@ -5,6 +5,8 @@ use crate::domain::Announcement;
 pub struct InsertAnnouncementParams {
     pub announcement_id: i64,
     pub local_path: String,
+    pub media_type: String,
+    pub media_duration: Option<f64>,
 }
 
 pub struct AnnouncementRepository {
@@ -20,12 +22,14 @@ impl AnnouncementRepository {
         let result = sqlx::query(
             r#"
             INSERT INTO "announcement"
-            ("announcement_id", "local_path")
-            VALUES (?1, ?2)
+            ("announcement_id", "local_path", "media_type", "media_duration")
+            VALUES (?1, ?2, ?3, ?4)
             "#,
         )
         .bind(params.announcement_id)
         .bind(params.local_path)
+        .bind(params.media_type)
+        .bind(params.media_duration)
         .execute(&self._db)
         .await?
         .last_insert_rowid();
@@ -58,7 +62,9 @@ impl AnnouncementRepository {
             SELECT
                 "id",
                 "announcement_id",
-                "local_path"
+                "local_path",
+                "media_type",
+                "media_duration"
             FROM "announcement"
             "#,
         )
@@ -66,6 +72,8 @@ impl AnnouncementRepository {
             id: row.try_get("id").unwrap(),
             announcement_id: row.try_get("announcement_id").unwrap(),
             local_path: row.try_get("local_path").unwrap(),
+            media_type: row.try_get("media_type").unwrap(),
+            media_duration: row.try_get("media_duration").unwrap(),
         })
         .fetch_all(&self._db)
         .await?;

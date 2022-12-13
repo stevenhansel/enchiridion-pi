@@ -1,10 +1,10 @@
 import { Box } from "@mui/system";
 import { Typography } from "@mui/material";
-import { appDataDir, join } from "@tauri-apps/api/path";
-import { convertFileSrc } from "@tauri-apps/api/tauri";
 import { useCallback, useContext, useEffect, useState } from "react";
-import { ApplicationErrorCode } from "../constants";
+import { ApplicationErrorCode, CAROUSEL_INTERVAL } from "../constants";
 import { ApplicationContext, ApplicationContextType } from "../context";
+import { appDataDir, dataDir, join } from "@tauri-apps/api/path";
+import { convertFileSrc } from "@tauri-apps/api/tauri";
 
 import {
   listenToMediaUpdateStart,
@@ -16,6 +16,7 @@ import {
   Announcement,
   isCameraEnabled,
 } from "../tauri";
+
 import ApplicationSettings from "./ApplicationSettings";
 
 const Display = () => {
@@ -30,6 +31,7 @@ const Display = () => {
       pauseCarousel,
       continueCarousel,
       updateMax,
+      setDurations,
     },
   } = useContext<ApplicationContextType>(ApplicationContext);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
@@ -40,6 +42,7 @@ const Display = () => {
       const appDataDirPath = await appDataDir();
 
       const rawAnnouncements = await tauri.getAnnouncements();
+      console.log('rawAnnouncements: ', rawAnnouncements);
       const announcements = await Promise.all(
         rawAnnouncements.map(async (announcement) => {
           const image_path = await join(
@@ -52,20 +55,31 @@ const Display = () => {
           return {
             id: announcement.id,
             announcement_id: announcement.announcement_id,
+            media_type: announcement.media_type,
+            media_duration: announcement.media_duration,
             local_path,
           };
         })
       );
 
+      console.log('announcements: ', announcements);
+
+      const mediaDuration = announcements.map((a) => {
+        if (a.media_duration !== null && a.media_type === "video") {
+          return a.media_duration;
+        } else {
+          return CAROUSEL_INTERVAL;
+        }
+      });
+
       if (announcements.length === 0) {
         setAnnouncements([]);
         return;
       }
-
       setAnnouncements(announcements);
       updateMax(announcements.length);
+      setDurations(mediaDuration);
     } catch (e) {
-      console.error(e);
       setError({
         code: ApplicationErrorCode.InitializationError,
         message: "Something went wrong when initializing the application",
@@ -134,6 +148,45 @@ const Display = () => {
     }
   }, [isNetworkConnected]);
 
+  const media = () => {
+    if (announcements[index].media_type === "image") {
+      return (
+        <img
+          style={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            display: "block",
+            width: "100vw",
+            height: "auto",
+            objectFit: "cover",
+          }}
+          src={announcements[index].local_path}
+        />
+      );
+    } else if (announcements[index].media_type === "video") {
+      return (
+        <video
+          style={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            display: "block",
+            width: "100vw",
+            height: "auto",
+            objectFit: "cover",
+          }}
+          src={announcements[index].local_path}
+          controls
+          autoPlay
+          muted
+        />
+      );
+    }
+  };
+
   return (
     <Box
       sx={{
@@ -145,19 +198,7 @@ const Display = () => {
     >
       {announcements.length > 0 ? (
         <>
-          <img
-            style={{
-              position: "absolute",
-              top: "50%",
-              left: "50%",
-              transform: "translate(-50%, -50%)",
-              display: "block",
-              width: "100vw",
-              height: "auto",
-              objectFit: "cover",
-            }}
-            src={announcements[index].local_path}
-          />
+          {media()}
           <div style={{ position: "absolute", right: 25, bottom: 30 }}>
             <Typography variant="h6">
               Created By Steven Hansel, Lukas Linardi, and Rudy Susanto

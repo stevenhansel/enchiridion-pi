@@ -1,4 +1,4 @@
-import { Grid, Paper, Modal, Typography, Box } from "@mui/material";
+import { Paper, Modal, Typography, Box } from "@mui/material";
 import { LoadingButton } from "@mui/lab";
 import { useCallback, useContext, useEffect, useState } from "react";
 import { ApplicationErrorCode } from "../constants";

@@ -27,7 +27,7 @@ export type TauriErrorObject = {
 export const isTauriErrorObject = <T>(
   response: TauriCommandResponse<T>
 ): boolean => {
-  return typeof response === "object" && "errorCode" in response;
+  return typeof response === "object" && response !== null && "errorCode" in response;
 };
 
 export type TauriCommandResponse<T> = T | TauriErrorObject;
@@ -36,7 +36,9 @@ export type Announcement = {
   id: number;
   announcement_id: number;
   local_path: string;
-};
+  media_type: string;
+  media_duration: number | null;
+}
 
 export type DeviceInformation = {
   id: number;
