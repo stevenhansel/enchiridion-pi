@@ -15,7 +15,7 @@ pub struct AnnouncementConsumerPayload {
     pub announcement_id: Option<i64>,
     pub announcement_ids: Option<Vec<i64>>,
     pub media_type: Option<String>,
-    pub media_duration: Option<f32>,
+    pub media_duration: Option<f64>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

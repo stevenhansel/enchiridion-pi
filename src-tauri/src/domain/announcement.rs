@@ -7,5 +7,5 @@ pub struct Announcement {
     pub announcement_id: i64,
     pub local_path: String,
     pub media_type: String,
-    pub media_duration: Option<f32>,
+    pub media_duration: Option<f64>,
 }

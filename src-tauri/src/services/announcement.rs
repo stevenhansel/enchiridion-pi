@@ -91,19 +91,16 @@ impl AnnouncementService {
             }
         };
 
-        let media_duration = match payload.media_duration {
-            Some(duration) => duration,
-            None => {
-                return Err(CreateAnnouncementError::InvalidPayload(
-                    "Media duration should not be null",
-                ))
-            }
-        };
-
-        let presigned = self
+        let presigned = match self
             ._enchiridion_api
             .get_announcement_media(announcement_id)
-            .await?;
+            .await {
+                Ok(presigned) => presigned,
+                Err(e) => {
+                    println!("{:?}", e);
+                    return Err(CreateAnnouncementError::Unknown);
+                }
+            };
 
         let image = reqwest::get(presigned.media).await?;
         let mut image_bytes = Cursor::new(image.bytes().await?);
@@ -138,7 +135,7 @@ impl AnnouncementService {
                 announcement_id,
                 local_path,
                 media_type,
-                media_duration,
+                media_duration: payload.media_duration,
             })
             .await?;
 
@@ -154,7 +151,8 @@ impl AnnouncementService {
             None => {
                 return Err(DeleteAnnouncementError::InvalidPayload(
                     "Announcement Id should not be null",
-                ))
+                )
+            )
             }
         };
 

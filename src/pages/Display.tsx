@@ -3,7 +3,7 @@ import { Typography } from "@mui/material";
 import { useCallback, useContext, useEffect, useState } from "react";
 import { ApplicationErrorCode, CAROUSEL_INTERVAL } from "../constants";
 import { ApplicationContext, ApplicationContextType } from "../context";
-import { dataDir, join } from "@tauri-apps/api/path";
+import { appDataDir, dataDir, join } from "@tauri-apps/api/path";
 import { convertFileSrc } from "@tauri-apps/api/tauri";
 
 import {
@@ -39,9 +39,10 @@ const Display = () => {
 
   const getAnnouncementMedias = async () => {
     try {
-      const appDataDirPath = await dataDir();
+      const appDataDirPath = await appDataDir();
 
       const rawAnnouncements = await tauri.getAnnouncements();
+      console.log('rawAnnouncements: ', rawAnnouncements);
       const announcements = await Promise.all(
         rawAnnouncements.map(async (announcement) => {
           const image_path = await join(
@@ -60,6 +61,8 @@ const Display = () => {
           };
         })
       );
+
+      console.log('announcements: ', announcements);
 
       const mediaDuration = announcements.map((a) => {
         if (a.media_duration !== null && a.media_type === "video") {
