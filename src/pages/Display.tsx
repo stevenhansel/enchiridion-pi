@@ -9,10 +9,12 @@ import { convertFileSrc } from "@tauri-apps/api/tauri";
 import {
   listenToMediaUpdateStart,
   listenToMediaUpdateEnd,
+  spawnStatusPoller,
   spawnCamera,
   spawnAnnouncementConsumer,
   tauri,
   Announcement,
+  isCameraEnabled,
 } from "../tauri";
 
 import ApplicationSettings from "./ApplicationSettings";
@@ -82,26 +84,33 @@ const Display = () => {
     }
   };
 
-  const initializeAnnouncementMedia = () => {
-    spawnAnnouncementConsumer()
-      .then(() => spawnCamera())
-      .then(() => getAnnouncementMedias())
-      .then(() => {
-        startCarousel();
+  const initializeAnnouncementMedia = async () => {
+    try {
+      const isCameraModuleEnabled = await isCameraEnabled();
+      if (isCameraModuleEnabled) {
+        await spawnCamera();
+      }
 
-        listenToMediaUpdateStart(() => {
-          setLoading(true);
-          pauseCarousel();
-        });
+      await spawnStatusPoller();
+      await spawnAnnouncementConsumer();
+      await getAnnouncementMedias();
 
-        listenToMediaUpdateEnd(async () => {
-          await getAnnouncementMedias();
+      startCarousel();
 
-          setLoading(false);
-          continueCarousel();
-        });
-      })
-      .catch((err) => console.error(err));
+      listenToMediaUpdateStart(() => {
+        setLoading(true);
+        pauseCarousel();
+      });
+
+      listenToMediaUpdateEnd(async () => {
+        await getAnnouncementMedias();
+
+        setLoading(false);
+        continueCarousel();
+      });
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const handleSettingsKeydownEvent = useCallback((event: KeyboardEvent) => {

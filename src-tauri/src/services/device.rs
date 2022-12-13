@@ -30,6 +30,14 @@ pub enum GetDeviceError {
     DatabaseError(#[from] sqlx::Error),
 }
 
+#[derive(Error, Debug)]
+pub enum UpdateCameraEnabledError {
+    #[error("An error occurred with the request to the api")]
+    ApiError(#[from] ApiError),
+    #[error("An error occurred with the request to the database")]
+    DatabaseError(#[from] sqlx::Error),
+}
+
 pub struct DeviceService {
     _device_repository: Arc<DeviceRepository>,
     _enchiridion_api: Arc<EnchiridionApi>,
@@ -50,14 +58,9 @@ impl DeviceService {
         &self,
         access_key_id: String,
         secret_access_key: String,
-        camera_enabled: bool,
     ) -> Result<Device, LinkDeviceError> {
         self._enchiridion_api
-            .link(
-                access_key_id.clone(),
-                secret_access_key.clone(),
-                camera_enabled,
-            )
+            .link(access_key_id.clone(), secret_access_key.clone())
             .await?;
 
         let device = self
@@ -113,5 +116,29 @@ impl DeviceService {
 
     pub async fn get_device(&self) -> Result<Device, GetDeviceError> {
         Ok(self._device_repository.find().await?)
+    }
+
+    pub async fn update_camera_enabled(
+        &self,
+        camera_enabled: bool,
+    ) -> Result<(), UpdateCameraEnabledError> {
+        let device = self._device_repository.find().await?;
+        let device_camera_enabled = if device.camera_enabled == 1 {
+            true
+        } else {
+            false
+        };
+
+        if camera_enabled != device_camera_enabled {
+            self._enchiridion_api
+                .update_camera_enabled(camera_enabled)
+                .await?;
+
+            self._device_repository
+                .update_camera_enabled(device.id, camera_enabled)
+                .await?;
+        }
+
+        Ok(())
     }
 }

@@ -1,4 +1,4 @@
-use std::{path::PathBuf, str::FromStr, sync::Arc};
+use std::{collections::BTreeMap, path::PathBuf, str::FromStr, sync::Arc};
 
 use online::check;
 use serde::Serialize;
@@ -12,9 +12,11 @@ use crate::{
     api::{ApiError, EnchiridionApi},
     consumer,
     domain::{Announcement, Device},
+    queue::Producer,
     repositories::{AnnouncementRepository, DeviceRepository},
     services::{AnnouncementService, DeviceService, LinkDeviceError, UnlinkDeviceError},
     settings::Settings,
+    status,
 };
 
 #[derive(Debug, Serialize)]
@@ -69,28 +71,21 @@ pub async fn link(
     device_service: State<'_, Arc<DeviceService>>,
     access_key_id: String,
     secret_access_key: String,
-    camera_enabled: bool,
 ) -> Result<Device, CommandError> {
-    match device_service
-        .link(access_key_id, secret_access_key, camera_enabled)
-        .await
-    {
+    match device_service.link(access_key_id, secret_access_key).await {
         Ok(device) => Ok(device),
-        Err(e) => {
-            println!("e: {:?}", e);
-            match e {
-                LinkDeviceError::ApiError(api_error) => match api_error {
-                    ApiError::ClientError(client_error) => {
-                        return Err(CommandError::new(
-                            client_error.error_code,
-                            client_error.messages,
-                        ))
-                    }
-                    _ => return Err(CommandError::new(api_error.to_string(), vec![])),
-                },
-                _ => return Err(CommandError::new(e.to_string(), vec![])),
-            }
-        }
+        Err(e) => match e {
+            LinkDeviceError::ApiError(api_error) => match api_error {
+                ApiError::ClientError(client_error) => {
+                    return Err(CommandError::new(
+                        client_error.error_code,
+                        client_error.messages,
+                    ))
+                }
+                _ => return Err(CommandError::new(api_error.to_string(), vec![])),
+            },
+            _ => return Err(CommandError::new(e.to_string(), vec![])),
+        },
     }
 }
 
@@ -124,6 +119,71 @@ pub async fn is_network_connected() -> bool {
 }
 
 #[tauri::command]
+pub async fn is_camera_enabled(device_service: State<'_, Arc<DeviceService>>) -> Result<bool, ()> {
+    let stdout = match Command::new("printenv").output() {
+        Ok(output) => output.stdout,
+        Err(_) => return Ok(false),
+    };
+
+    let raw_envs = stdout
+        .split('\n')
+        .map(|str| str.to_string())
+        .collect::<Vec<String>>();
+
+    let mut envs: Vec<(String, String)> = Vec::new();
+    for raw in raw_envs {
+        let splitted: Vec<String> = raw.split("=").map(|str| str.to_string()).collect();
+        if splitted.len() < 2 {
+            continue;
+        }
+
+        envs.push((splitted[0].clone(), splitted[1].clone()));
+    }
+
+    let enabled = match envs.into_iter().find(|env| env.0 == "CAMERA") {
+        Some(env) => match env.1.parse::<bool>() {
+            Ok(enabled) => enabled,
+            Err(_) => false,
+        },
+        None => false,
+    };
+
+    if let Err(_) = device_service.update_camera_enabled(enabled).await {
+        return Ok(false);
+    }
+
+    Ok(enabled)
+}
+
+#[tauri::command]
+pub async fn spawn_status_poller(
+    settings: State<'_, Settings>,
+    device_service: State<'_, Arc<DeviceService>>,
+) -> Result<(), CommandError> {
+    let device = match device_service.get_device().await {
+        Ok(device) => device,
+        Err(e) => return Err(CommandError::new(e.to_string(), vec![])),
+    };
+
+    let device_id = device.device_id;
+
+    let redis_addr = settings.redis_addr.clone();
+
+    async_runtime::spawn(async move {
+        let redis_config = deadpool_redis::Config::from_url(redis_addr);
+        let redis_pool = redis_config
+            .create_pool(Some(deadpool_redis::Runtime::Tokio1))
+            .expect("[error] Failed to open redis connection");
+
+        status::run(redis_pool, device_id).await;
+    });
+
+    Ok(())
+}
+
+const DEVICE_LIVESTREAM_QUEUE_NAME: &'static str = "device_livestream";
+
+#[tauri::command]
 pub async fn spawn_camera(
     settings: State<'_, Settings>,
     device_service: State<'_, Arc<DeviceService>>,
@@ -133,7 +193,16 @@ pub async fn spawn_camera(
         Err(e) => return Err(CommandError::new(e.to_string(), vec![])),
     };
 
-    let device_id = device.id.to_string();
+    let redis_addr = settings.redis_addr.clone();
+
+    let redis_config = deadpool_redis::Config::from_url(redis_addr);
+    let redis_pool = redis_config
+        .create_pool(Some(deadpool_redis::Runtime::Tokio1))
+        .expect("[error] Failed to open redis connection");
+
+    let producer = Producer::new(redis_pool, DEVICE_LIVESTREAM_QUEUE_NAME.to_string());
+
+    let device_id = device.device_id.to_string();
     let device_id = device_id.as_str();
 
     let (mut rx, _child) = Command::new_sidecar("camera")
@@ -142,10 +211,17 @@ pub async fn spawn_camera(
         .spawn()
         .expect("Failed to spawn sidecar");
 
+    println!("Camera module is starting");
+
     async_runtime::spawn(async move {
         while let Some(event) = rx.recv().await {
             if let CommandEvent::Stdout(line) = event {
-                println!("{}", line);
+                let map = BTreeMap::from([(String::from("data"), line)]);
+
+                if let Err(_) = producer.push(map).await {
+                    eprintln!("Something when wrong when pushing the livestream data");
+                    continue;
+                };
             }
         }
     });
