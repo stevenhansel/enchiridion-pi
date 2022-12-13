@@ -1,9 +1,9 @@
+import React, { useCallback, useContext, useEffect, useState } from "react";
 import { Box } from "@mui/system";
 import { Typography } from "@mui/material";
-import { useCallback, useContext, useEffect, useState, useMemo } from "react";
 import { ApplicationErrorCode, CAROUSEL_INTERVAL } from "../constants";
 import { ApplicationContext, ApplicationContextType } from "../context";
-import { appDataDir, dataDir, join } from "@tauri-apps/api/path";
+import { appDataDir, join } from "@tauri-apps/api/path";
 import { convertFileSrc } from "@tauri-apps/api/tauri";
 
 import {
@@ -15,16 +15,77 @@ import {
   tauri,
   Announcement,
   isCameraEnabled,
+  AnnouncementMedia,
 } from "../tauri";
 
 import ApplicationSettings from "./ApplicationSettings";
+
+const VIDEO_OFFSET_MS = 5000;
+
+type ImageElementProps = {
+  src: string;
+};
+
+const ImageElement = React.memo((props: ImageElementProps) => {
+  return (
+    <img
+      style={{
+        position: "absolute",
+        top: "50%",
+        left: "50%",
+        transform: "translate(-50%, -50%)",
+        display: "block",
+        width: "100vw",
+        height: "auto",
+        objectFit: "cover",
+      }}
+      src={props.src}
+    />
+  );
+});
+
+type VideoElementProps = {
+  index: number;
+  src: string;
+};
+
+const VideoElement = React.memo((props: VideoElementProps) => {
+  return (
+    <video
+      id={`video-${props.index}`}
+      style={{
+        position: "absolute",
+        top: "50%",
+        left: "50%",
+        transform: "translate(-50%, -50%)",
+        display: "block",
+        width: "100vw",
+        height: "auto",
+        objectFit: "cover",
+      }}
+      src={props.src}
+      autoPlay
+      muted
+    />
+  );
+});
+
+const Footer = () => {
+  return (
+    <div style={{ position: "absolute", right: 25, bottom: 30 }}>
+      <Typography variant="h6">
+        Created By Steven Hansel, Lukas Linardi, and Rudy Susanto
+      </Typography>
+      <Typography variant="h6">Computer Engineering 2022</Typography>
+    </div>
+  );
+};
 
 const Display = () => {
   const {
     setLoading,
     setError,
     isNetworkConnected,
-    carouselIndex,
     carousel: {
       index,
       startCarousel,
@@ -38,39 +99,45 @@ const Display = () => {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
-  const getAnnouncementMedias = async () => {
+  const getAnnouncementMedias = useCallback(async () => {
     try {
       const appDataDirPath = await appDataDir();
 
       const rawAnnouncements = await tauri.getAnnouncements();
+
       const announcements = await Promise.all(
         rawAnnouncements.map(async (announcement) => {
-	  let local_path: string;
-	  if (announcement.media_type === "image") {
-		  const image_path = await join(
-		    appDataDirPath,
-		    announcement.local_path
-		  );
+          let localPath = "";
 
-		  local_path = convertFileSrc(image_path);
-	  } else if (announcement.media_type === "video") {
-		 const response = await tauri.getAnnouncementMedia(announcement.id);
-	      	 local_path = response.media; 
-	  }
+          if (announcement.media_type === "image") {
+            const image_path = await join(
+              appDataDirPath,
+              announcement.local_path
+            );
+
+            localPath = convertFileSrc(image_path);
+          } else if (announcement.media_type === "video") {
+            const response = await tauri.getAnnouncementMedia(announcement.announcement_id);
+            localPath = (response as AnnouncementMedia).media;
+          }
 
           return {
             id: announcement.id,
             announcement_id: announcement.announcement_id,
             media_type: announcement.media_type,
             media_duration: announcement.media_duration,
-            local_path,
+            local_path: localPath,
           };
         })
       );
 
-      const mediaDuration = announcements.map((a) => {
-        if (a.media_duration !== null && a.media_type === "video") {
-          return a.media_duration;
+
+      const mediaDuration = announcements.map((announcement) => {
+        if (
+          announcement.media_duration !== null &&
+          announcement.media_type === "video"
+        ) {
+          return announcement.media_duration + VIDEO_OFFSET_MS;
         } else {
           return CAROUSEL_INTERVAL;
         }
@@ -90,9 +157,9 @@ const Display = () => {
         message: "Something went wrong when initializing the application",
       });
     }
-  };
+  }, []);
 
-  const initializeAnnouncementMedia = async () => {
+  const initializeAnnouncementMedia = useCallback(async () => {
     try {
       const isCameraModuleEnabled = await isCameraEnabled();
       if (isCameraModuleEnabled) {
@@ -117,9 +184,12 @@ const Display = () => {
         continueCarousel();
       });
     } catch (err) {
-      console.error(err);
+      setError({
+        code: ApplicationErrorCode.InitializationError,
+        message: "Something went wrong when initializing the application",
+      });
     }
-  };
+  }, []);
 
   const handleSettingsKeydownEvent = useCallback((event: KeyboardEvent) => {
     if (event.key === "Escape") {
@@ -155,59 +225,18 @@ const Display = () => {
 
   useEffect(() => {
     const announcement = announcements[index];
+
     if (announcement && announcement.media_type === "video") {
-	const video = document.getElementById(`video-${index}`);
+      const video = document.getElementById(
+        `video-${index}`
+      ) as HTMLVideoElement | null;
+      if (video === null) return;
 
-	video.currentTime = 0;
+      video.pause();
+      video.currentTime = 0;
+      video.play();
     }
-  }, [announcements, index])
-
-console.log('announcements: ', announcements);
-console.log('carouselIndex.current', carouselIndex.current);
-
-  const announcementElements = useMemo(() => {
-	console.log('rerender triggered');
-	if (announcements.length === 0) return;
-
-	return announcements.map((announcement, i) => {
-		return (
-			<div key={i}>{announcement.media_type === "image" ? (
-				<img
-				  style={{
-				    position: "absolute",
-				    top: "50%",
-				    left: "50%",
-				    transform: "translate(-50%, -50%)",
-				    display: carouselIndex.current === i ? "block" : "none",
-				    width: "100vw",
-				    height: "auto",
-				    objectFit: "cover",
-				  }}
-				  src={announcement.local_path}
-				/>
-			) : (
-				<video
-				  id={`video-${i}`}
-				  style={{
-				    position: "absolute",
-				    top: "50%",
-				    left: "50%",
-				    transform: "translate(-50%, -50%)",
-				    display: carouselIndex.current === i ? "block" : "none",
-				    width: "100vw",
-				    height: "auto",
-				    objectFit: "cover",
-				  }}
-				  src={announcement.local_path}
-				  controls
-				  autoPlay
-				  muted
-				/>
-
-			)}</div>	
-		);
-	  })
-  }, [announcements]);
+  }, [announcements, index]);
 
   return (
     <Box
@@ -220,36 +249,31 @@ console.log('carouselIndex.current', carouselIndex.current);
     >
       {announcements.length > 0 ? (
         <>
-	{announcementElements}
+          {announcements.map((announcement, i) => {
+            let child;
+            if (announcement.media_type === "image") {
+              child = <ImageElement src={announcement.local_path} />;
+            } else {
+              child = <VideoElement index={i} src={announcement.local_path} />;
+            }
 
-          <div style={{ position: "absolute", right: 25, bottom: 30 }}>
-            <Typography variant="h6">
-              Created By Steven Hansel, Lukas Linardi, and Rudy Susanto
-            </Typography>
-            <Typography variant="h6">Computer Engineering 2022</Typography>
-          </div>
+            return (
+              <Box
+                key={announcement.id}
+                style={{
+                  display: index === i ? "block" : "none",
+                }}
+              >
+                {child}
+              </Box>
+            );
+          })}
+          <Footer />
         </>
       ) : (
         <>
-          <img
-            style={{
-              position: "absolute",
-              top: "50%",
-              left: "50%",
-              transform: "translate(-50%, -50%)",
-              display: "block",
-              width: "100vw",
-              height: "auto",
-              objectFit: "cover",
-            }}
-            src="/binus.jpeg"
-          />
-          <div style={{ position: "absolute", right: 25, bottom: 30 }}>
-            <Typography variant="h6">
-              Created By Steven Hansel, Lukas Linardi, and Rudy Susanto
-            </Typography>
-            <Typography variant="h6">Computer Engineering 2022</Typography>
-          </div>
+          <ImageElement src="/binus.jpeg" />
+          <Footer />
         </>
       )}
 

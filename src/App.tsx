@@ -6,11 +6,8 @@ import {
   Typography,
 } from "@mui/material";
 import WifiOffIcon from "@mui/icons-material/WifiOff";
-import { useEffect, useState, useRef } from "react";
-import {
-  ApplicationError,
-  NETWORK_CONNECTION_CHECK_MS,
-} from "./constants";
+import { useEffect, useState } from "react";
+import { ApplicationError, NETWORK_CONNECTION_CHECK_MS } from "./constants";
 import { ApplicationContext } from "./context";
 import { useCarousel } from "./hooks";
 
@@ -24,11 +21,7 @@ const App = () => {
   const [error, setError] = useState<ApplicationError | null>(null);
   const [isNetworkConnected, setIsNetworkConnected] = useState(true);
 
-  const carouselIndex = useRef(0);
-
-  const carousel = useCarousel((updatedIndex: number) => {
-	carouselIndex.current = updatedIndex;
-  });
+  const carousel = useCarousel();
 
   useEffect(() => {
     setLoading(true);
@@ -69,7 +62,6 @@ const App = () => {
         isNetworkConnected,
         setIsNetworkConnected,
         carousel,
-	carouselIndex,
       }}
     >
       <div className="application-container">

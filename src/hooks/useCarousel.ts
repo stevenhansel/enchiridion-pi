@@ -26,7 +26,7 @@ export const defaultCarouselState = (): CarouselState => ({
   setDurations: (_durations: number[]) => {},
 });
 
-const useCarousel = (onUpdate?: (updatedIndex: number) => void) => {
+const useCarousel = () => {
   const [index, setIndex] = useState(0);
   const [durations, setDurations] = useState<number[]>([]);
   const [max, setMax] = useState<number | null>(null);
@@ -47,12 +47,9 @@ const useCarousel = (onUpdate?: (updatedIndex: number) => void) => {
     if (isStart === false || isPaused === true) return;
     const timeout = setTimeout(() => {
       setIndex((previousIndex) => {
-	const updatedIndex = previousIndex + 1 === max ? 0 : previousIndex + 1;
-	if (onUpdate) {
-		onUpdate(updatedIndex);
-	}
+        const updatedIndex = previousIndex + 1 === max ? 0 : previousIndex + 1;
 
-	return updatedIndex;
+        return updatedIndex;
       });
     }, durations[index]);
 

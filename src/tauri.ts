@@ -28,7 +28,9 @@ export type TauriErrorObject = {
 export const isTauriErrorObject = <T>(
   response: TauriCommandResponse<T>
 ): boolean => {
-  return typeof response === "object" && response !== null && "errorCode" in response;
+  return (
+    typeof response === "object" && response !== null && "errorCode" in response
+  );
 };
 
 export type TauriCommandResponse<T> = T | TauriErrorObject;
@@ -39,7 +41,7 @@ export type Announcement = {
   local_path: string;
   media_type: string;
   media_duration: number | null;
-}
+};
 
 export type DeviceInformation = {
   id: number;
@@ -55,7 +57,7 @@ export type DeviceInformation = {
 export type AnnouncementMedia = {
   filename: string;
   media: string;
-}
+};
 
 const getAnnouncements = async () => {
   try {
@@ -147,14 +149,19 @@ export const spawnAnnouncementConsumer = async () => {
   await invoke(TauriCommands.SpawnAnnouncementConsumer);
 };
 
-export const getAnnouncementMedia = async (announcementId: number) => {
+export const getAnnouncementMedia = async (
+  announcementId: number
+): Promise<TauriCommandResponse<AnnouncementMedia>> => {
   try {
-    const response: AnnouncementMedia = await invoke(TauriCommands.GetAnnouncementMedia, { announcementId });
+    const response: AnnouncementMedia = await invoke(
+      TauriCommands.GetAnnouncementMedia,
+      { announcementId }
+    );
     return response;
   } catch (err) {
     return err as TauriErrorObject;
   }
-}
+};
 
 export const tauri = {
   getAnnouncements,

@@ -102,7 +102,7 @@ impl AnnouncementService {
             .get_announcement_media(announcement_id)
             .await {
                 Ok(presigned) => presigned,
-                Err(e) => {
+                Err(_) => {
                     return Err(CreateAnnouncementError::Unknown);
                 }
             };
@@ -200,7 +200,7 @@ impl AnnouncementService {
             .get_announcement_media(announcement_id.into())
             .await {
                 Ok(presigned) => presigned,
-                Err(e) => {
+                Err(_) => {
                     return Err(GetAnnouncementMediaError::Unknown);
                 }
             };
