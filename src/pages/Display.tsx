@@ -122,7 +122,7 @@ const Display = () => {
           }
 
           return {
-            id: announcement.id,
+           id: announcement.id,
             announcement_id: announcement.announcement_id,
             media_type: announcement.media_type,
             media_duration: announcement.media_duration,
