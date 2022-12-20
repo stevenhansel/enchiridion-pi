@@ -19,8 +19,9 @@ class Runtime:
     application_name = "Enchiridion"
 
     window_name = "camera"
-    window_width = 800
-    window_height = 600
+
+    window_width = 1024
+    window_height = 768
 
     def __init__(self, device_id, srs_ip):
         self.device_id = device_id
@@ -32,7 +33,7 @@ class Runtime:
 
         threads = [
             threading.Thread(target=self.camera),
-            threading.Thread(target=self.gstreamer),
+            # threading.Thread(target=self.gstreamer),
             threading.Thread(target=self.timeseries),
             threading.Thread(target=self.wmctrl_focuser)
         ]
@@ -48,16 +49,16 @@ class Runtime:
 
         detector = dlib.get_frontal_face_detector()
 
-        detected_faces = []
-
         while True:
             ret, frame = cap.read()
+
             frame = cv2.flip(frame, 1)
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
             faces = detector(frame)
 
             self.mutex.acquire()
-            self.num_of_faces = len(detected_faces)
+            self.num_of_faces = len(faces)
             self.mutex.release()
 
             for i, face in enumerate(faces):   
@@ -95,10 +96,9 @@ class Runtime:
                     print("Camera frame not detected, trying again...", flush=True)
 
                     continue
-   
-        # gstreamer_cmd = '''gst-launch-1.0 ximagesrc xid={pid} ! videoscale ! 'video/x-raw,width=600,height=450' ! videoconvert ! x264enc bitrate=1000 tune=zerolatency ! h264parse ! queue ! flvmux name=muxer ! rtmpsink location="rtmp://{srs_ip}/live/livestream live=1"'''.format(pid=camera_frame_pid, srs_ip=self.srs_ip, device_id=self.device_id)
 
-        gstreamer_cmd = '''gst-launch-1.0 ximagesrc xid={pid} ! videoconvert ! x264enc speed-preset=ultrafast tune=zerolatency byte-stream=true ! queue ! flvmux name=muxer ! rtmpsink location="rtmp://{srs_ip}/live/livestream/{device_id} live=1"'''.format(pid=camera_frame_pid, srs_ip=self.srs_ip, device_id=self.device_id)
+        # gstreamer_cmd = '''gst-launch-1.0 ximagesrc xid={pid} ! videoscale ! 'video/x-raw,width={width},height={height}' ! videoconvert ! x264enc speed-preset=ultrafast tune=zerolatency byte-stream=true ! queue ! flvmux name=muxer ! rtmpsink location="rtmp://{srs_ip}/live/livestream/{device_id} live=1"'''.format(pid=camera_frame_pid, srs_ip=self.srs_ip, device_id=self.device_id, width=self.window_width, height=self.window_height)
+        # gstreamer_cmd = '''gst-launch-1.0 ximagesrc xid={pid} ! videoconvert ! x264enc speed-preset=ultrafast tune=zerolatency byte-stream=true ! queue ! flvmux name=muxer ! rtmpsink location="rtmp://{srs_ip}/live/livestream/{device_id} live=1"'''.format(pid=camera_frame_pid, srs_ip=self.srs_ip, device_id=self.device_id)
 
         with open(os.devnull, 'w') as fp:
             gst = subprocess.Popen(gstreamer_cmd, shell=True, stdout=fp)
@@ -110,7 +110,9 @@ class Runtime:
 
             self.mutex.acquire()
             timestamp = datetime.datetime.now(datetime.timezone.utc)
+
             print("{timestamp} {device_id} {num_of_faces}".format(timestamp=timestamp.isoformat(), device_id=self.device_id, num_of_faces=self.num_of_faces), flush=True)
+
             self.mutex.release()
 
     def wmctrl_focuser(self):
