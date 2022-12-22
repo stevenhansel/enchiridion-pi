@@ -1,15 +1,10 @@
-use std::{
-    fs,
-    str::FromStr,
-    sync::{Arc, Mutex},
-};
+use std::{fs, str::FromStr, sync::Arc};
 
 use log::LevelFilter;
 use sqlx::{
     migrate::Migrator,
     sqlite::{SqliteConnectOptions, SqlitePoolOptions},
 };
-use tauri::async_runtime::JoinHandle;
 use tauri_plugin_log::{fern::colors::ColoredLevelConfig, LogTarget, LoggerBuilder};
 
 use crate::{
@@ -71,9 +66,6 @@ pub async fn run() {
         enchiridion_api.clone(),
     ));
 
-    let announcement_consumer_handle: Arc<Mutex<Option<JoinHandle<()>>>> =
-        Arc::new(Mutex::new(None));
-
     tauri::Builder::default()
         .setup(move |app| {
             let migrations_path = app.path_resolver().resolve_resource("migrations").unwrap();
@@ -91,7 +83,6 @@ pub async fn run() {
         .manage(pool)
         .manage(device_service)
         .manage(announcement_service)
-        .manage(announcement_consumer_handle)
         // TODO: Find out why log plugin not running under tokio runtime
         .plugin(
             LoggerBuilder::default()
