@@ -1,10 +1,12 @@
 import React, { useCallback, useContext, useEffect, useState } from "react";
 import { Box } from "@mui/system";
 import { Typography } from "@mui/material";
-import { ApplicationErrorCode, CAROUSEL_INTERVAL } from "../constants";
-import { ApplicationContext, ApplicationContextType } from "../context";
 import { appDataDir, join } from "@tauri-apps/api/path";
 import { convertFileSrc } from "@tauri-apps/api/tauri";
+
+import { ApplicationErrorCode, CAROUSEL_INTERVAL } from "../constants";
+import { ApplicationContext, ApplicationContextType } from "../context";
+import { MediaType } from '../hooks/useCarousel';
 
 import {
   listenToMediaUpdateStart,
@@ -20,7 +22,7 @@ import {
 
 import ApplicationSettings from "./ApplicationSettings";
 
-const VIDEO_OFFSET_MS = 5000;
+const VIDEO_OFFSET_MS = 500;
 
 type ImageElementProps = {
   src: string;
@@ -47,6 +49,8 @@ const ImageElement = React.memo((props: ImageElementProps) => {
 type VideoElementProps = {
   index: number;
   src: string;
+  onEnded: () => void;
+  shouldLoop: boolean;
 };
 
 const VideoElement = React.memo((props: VideoElementProps) => {
@@ -64,8 +68,12 @@ const VideoElement = React.memo((props: VideoElementProps) => {
         objectFit: "cover",
       }}
       src={props.src}
+      onEnded={() => {
+	props.onEnded();
+      }}
       autoPlay
       muted
+      loop={props.shouldLoop}
     />
   );
 });
@@ -88,12 +96,14 @@ const Display = () => {
     isNetworkConnected,
     carousel: {
       index,
+      setMediaTypes,
       startCarousel,
       stopCarousel,
       pauseCarousel,
       continueCarousel,
       updateMax,
       setDurations,
+      onVideoEnd,
     },
   } = useContext<ApplicationContextType>(ApplicationContext);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
@@ -120,7 +130,7 @@ const Display = () => {
             const response = await tauri.getAnnouncementMedia(announcement.announcement_id);
             localPath = (response as AnnouncementMedia).media;
           }
-
+ 
           return {
            id: announcement.id,
             announcement_id: announcement.announcement_id,
@@ -131,26 +141,25 @@ const Display = () => {
         })
       );
 
-
-      const mediaDuration = announcements.map((announcement) => {
-        if (
-          announcement.media_duration !== null &&
-          announcement.media_type === "video"
-        ) {
-          return announcement.media_duration + VIDEO_OFFSET_MS;
-        } else {
-          return CAROUSEL_INTERVAL;
-        }
-      });
-
       if (announcements.length === 0) {
         setAnnouncements([]);
+	setMediaTypes([]);
+	updateMax(0);
+
         return;
       }
 
+      const newMediaTypes = announcements.map((announcement) => {
+        if (announcement.media_type === "image") {
+	  return MediaType.Image;
+	} else {
+	  return MediaType.Video;
+	}
+      });
+
       setAnnouncements(announcements);
+      setMediaTypes(newMediaTypes);
       updateMax(announcements.length);
-      setDurations(mediaDuration);
     } catch (e) {
       setError({
         code: ApplicationErrorCode.InitializationError,
@@ -254,7 +263,7 @@ const Display = () => {
             if (announcement.media_type === "image") {
               child = <ImageElement src={announcement.local_path} />;
             } else {
-              child = <VideoElement index={i} src={announcement.local_path} />;
+              child = <VideoElement index={i} src={announcement.local_path} onEnded={onVideoEnd} shouldLoop={announcements.length === 1} />;
             }
 
             return (

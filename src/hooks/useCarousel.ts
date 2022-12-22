@@ -1,66 +1,98 @@
-import { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
+import { CAROUSEL_INTERVAL } from '../constants';
+
+export enum MediaType {
+  Image,
+  Video
+};
 
 export type CarouselState = {
   index: number;
-  durations: number[];
+
+  mediaTypes: MediaType[],
+  setMediaTypes: React.Dispatch<React.SetStateAction<MediaType[]>>
+
   isStart: boolean;
   isPaused: boolean;
+
   startCarousel: () => void;
   stopCarousel: () => void;
   pauseCarousel: () => void;
   continueCarousel: () => void;
+
   updateMax: (max: number) => void;
-  setDurations: (durations: number[]) => void;
+  onVideoEnd: () => void;
 };
+
 
 export const defaultCarouselState = (): CarouselState => ({
   index: 0,
-  durations: [],
+
+  mediaTypes: [],
+  setMediaTypes: () => {},
+
   isStart: false,
   isPaused: false,
+
   startCarousel: () => {},
   stopCarousel: () => {},
   pauseCarousel: () => {},
   continueCarousel: () => {},
+
   updateMax: (_max: number) => {},
-  setDurations: (_durations: number[]) => {},
+  onVideoEnd: () => {},
 });
 
 const useCarousel = () => {
   const [index, setIndex] = useState(0);
-  const [durations, setDurations] = useState<number[]>([]);
   const [max, setMax] = useState<number | null>(null);
   const [isStart, setIsStart] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
 
+  const [mediaTypes, setMediaTypes] = useState<MediaType[]>([]);
+
   const startCarousel = useCallback(() => setIsStart(true), []);
-
   const stopCarousel = useCallback(() => setIsStart(false), []);
-
   const pauseCarousel = useCallback(() => setIsPaused(true), []);
-
   const continueCarousel = useCallback(() => setIsPaused(false), []);
 
   const updateMax = useCallback((max: number) => setMax(max), []);
 
+  const onVideoEnd = useCallback(() => {
+    setIndex((previousIndex) => {
+      const newIndex = previousIndex + 1 === max ? 0 : previousIndex + 1;
+
+      return newIndex;
+    });
+  }, [max]);
+
   useEffect(() => {
     if (isStart === false || isPaused === true) return;
-    const timeout = setTimeout(() => {
-      setIndex((previousIndex) => {
-        const updatedIndex = previousIndex + 1 === max ? 0 : previousIndex + 1;
 
-        return updatedIndex;
-      });
-    }, durations[index]);
+    let timeout: NodeJS.Timeout | undefined;
+
+    const currentMediaType = mediaTypes[index];
+    if (currentMediaType === MediaType.Image) {
+      timeout = setTimeout(() => {
+        setIndex((previousIndex) => {
+          const updatedIndex = previousIndex + 1 === max ? 0 : previousIndex + 1;
+     
+          return updatedIndex;
+        });
+      }, CAROUSEL_INTERVAL);
+    }
 
     return () => {
-      clearTimeout(timeout);
+      if (timeout !== undefined) {
+        clearTimeout(timeout);
+      }
     };
-  }, [index, durations, isStart, isPaused]);
+  }, [index, mediaTypes, isStart, isPaused]);
 
   return {
     index,
-    durations,
+    mediaTypes,
+    setMediaTypes,
     isStart,
     isPaused,
     startCarousel,
@@ -68,7 +100,7 @@ const useCarousel = () => {
     pauseCarousel,
     continueCarousel,
     updateMax,
-    setDurations,
+    onVideoEnd,
   };
 };
 
