@@ -56,15 +56,19 @@ const useCarousel = () => {
   const pauseCarousel = useCallback(() => setIsPaused(true), []);
   const continueCarousel = useCallback(() => setIsPaused(false), []);
 
-  const updateMax = useCallback((max: number) => setMax(max), []);
+  const updateMax = useCallback((max: number) => {
+    setIndex(0);
+    setMax(max);
+  }, []);
 
   const onVideoEnd = useCallback(() => {
     setIndex((previousIndex) => {
+      if (mediaTypes[previousIndex] === MediaType.Image) return previousIndex;
       const newIndex = previousIndex + 1 === max ? 0 : previousIndex + 1;
 
       return newIndex;
     });
-  }, [max]);
+  }, [max, mediaTypes]);
 
   useEffect(() => {
     if (isStart === false || isPaused === true) return;
