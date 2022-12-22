@@ -112,8 +112,9 @@ impl DeviceService {
 
     pub async fn unlink(&self) -> Result<(), UnlinkDeviceError> {
         self._enchiridion_api.unlink().await?;
-        self._device_repository.delete().await?;
-        self._announcement_repository.reset().await?;
+
+        _ = self._device_repository.delete().await;
+        _ = self._announcement_repository.reset().await;
 
         Ok(())
     }
