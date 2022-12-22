@@ -1,11 +1,17 @@
-use std::{collections::BTreeMap, path::PathBuf, str::FromStr, sync::Arc};
+use std::{
+    collections::BTreeMap,
+    path::PathBuf,
+    str::FromStr,
+    sync::{Arc, Mutex},
+};
 
 use online::check;
 use serde::Serialize;
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
 use tauri::{
-    api::process::{Command, CommandEvent},
-    async_runtime, State,
+    api::process::{kill_children, Command, CommandEvent},
+    async_runtime::{self, JoinHandle},
+    State,
 };
 
 use crate::{
@@ -84,8 +90,11 @@ pub async fn link(
                 }
                 _ => {
                     println!("{:?}", api_error);
-                    return Err(CommandError::new(api_error.to_string(), vec![api_error.to_string()]))
-                },
+                    return Err(CommandError::new(
+                        api_error.to_string(),
+                        vec![api_error.to_string()],
+                    ));
+                }
             },
             _ => return Err(CommandError::new(e.to_string(), vec![e.to_string()])),
         },
@@ -93,7 +102,10 @@ pub async fn link(
 }
 
 #[tauri::command]
-pub async fn unlink(device_service: State<'_, Arc<DeviceService>>) -> Result<(), CommandError> {
+pub async fn unlink(
+    device_service: State<'_, Arc<DeviceService>>,
+    announcement_consumer_handle: State<'_, Arc<Mutex<Option<JoinHandle<()>>>>>,
+) -> Result<(), CommandError> {
     if let Err(e) = device_service.unlink().await {
         match e {
             UnlinkDeviceError::ApiError(api_error) => match api_error {
@@ -109,14 +121,28 @@ pub async fn unlink(device_service: State<'_, Arc<DeviceService>>) -> Result<(),
         }
     }
 
+    kill_children();
+
+    let mut announcement_consumer_handle = announcement_consumer_handle.lock().unwrap();
+    if let Some(handle) = &*announcement_consumer_handle {
+        handle.abort();
+        *announcement_consumer_handle = None;
+    }
+
     Ok(())
 }
 
 #[tauri::command]
-pub async fn get_announcement_media(announcement_id: i32, announcement_service: State<'_, Arc<AnnouncementService>>) -> Result<AnnouncementMedia, CommandError> {
-    match announcement_service.get_announcement_media(announcement_id).await {
+pub async fn get_announcement_media(
+    announcement_id: i32,
+    announcement_service: State<'_, Arc<AnnouncementService>>,
+) -> Result<AnnouncementMedia, CommandError> {
+    match announcement_service
+        .get_announcement_media(announcement_id)
+        .await
+    {
         Ok(media) => Ok(media),
-        Err(e) => return Err(CommandError::new(e.to_string(), vec![e.to_string()]))
+        Err(e) => return Err(CommandError::new(e.to_string(), vec![e.to_string()])),
     }
 }
 
@@ -245,6 +271,7 @@ pub fn spawn_announcement_consumer(
     handle: tauri::AppHandle,
     settings: State<'_, Settings>,
     app_local_data_dir: State<'_, PathBuf>,
+    announcement_consumer_handle: State<'_, Arc<Mutex<Option<JoinHandle<()>>>>>,
 ) -> Result<(), String> {
     println!("Announcement consumer is starting");
 
@@ -253,7 +280,7 @@ pub fn spawn_announcement_consumer(
     let redis_addr = settings.redis_addr.clone();
     let enchiridion_api_base_url = settings.enchiridion_api_base_url.clone();
 
-    async_runtime::spawn(async move {
+    let handle = async_runtime::spawn(async move {
         let sqlite_opt = SqliteConnectOptions::from_str(
             format!("sqlite://{}/data.db", app_local_data_dir).as_str(),
         )
@@ -293,6 +320,9 @@ pub fn spawn_announcement_consumer(
 
         consumer::announcement::consume(device, handle, redis_pool, announcement_service).await;
     });
+
+    let mut announcement_consumer_handle = announcement_consumer_handle.lock().unwrap();
+    *announcement_consumer_handle = Some(handle);
 
     Ok(())
 }
