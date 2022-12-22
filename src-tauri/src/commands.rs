@@ -308,6 +308,7 @@ pub fn spawn_announcement_consumer(
 
         let device_service = Arc::new(DeviceService::new(
             device_repository.clone(),
+            announcement_repository.clone(),
             enchiridion_api.clone(),
         ));
         let announcement_service = Arc::new(AnnouncementService::new(

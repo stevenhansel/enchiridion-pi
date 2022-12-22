@@ -80,4 +80,21 @@ impl AnnouncementRepository {
 
         Ok(result)
     }
+
+    pub async fn reset(&self) -> Result<(), sqlx::Error> {
+        let rows_affected = sqlx::query(
+            r#"
+            DELETE FROM "announcement"
+            "#,
+        )
+        .execute(&self._db)
+        .await?
+        .rows_affected();
+
+        if rows_affected == 0 {
+            return Err(sqlx::Error::RowNotFound);
+        }
+
+        Ok(())
+    }
 }

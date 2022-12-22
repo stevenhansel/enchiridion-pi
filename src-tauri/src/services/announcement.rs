@@ -52,6 +52,12 @@ pub enum GetAnnouncementMediaError {
     Unknown,
 }
 
+#[derive(Error, Debug)]
+pub enum ResetAnnouncementError {
+    #[error("An error occurred with the request to the database")]
+    DatabaseError(#[from] sqlx::Error),
+}
+
 pub struct AnnouncementService {
     _images_dir: PathBuf,
     _announcement_repository: Arc<AnnouncementRepository>,

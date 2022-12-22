@@ -5,7 +5,7 @@ use thiserror::Error;
 use crate::{
     api::{ApiError, EnchiridionApi},
     domain::Device,
-    repositories::{DeviceRepository, InsertDeviceParams},
+    repositories::{AnnouncementRepository, DeviceRepository, InsertDeviceParams},
 };
 
 #[derive(Error, Debug)]
@@ -40,16 +40,19 @@ pub enum UpdateCameraEnabledError {
 
 pub struct DeviceService {
     _device_repository: Arc<DeviceRepository>,
+    _announcement_repository: Arc<AnnouncementRepository>,
     _enchiridion_api: Arc<EnchiridionApi>,
 }
 
 impl DeviceService {
     pub fn new(
         _device_repository: Arc<DeviceRepository>,
+        _announcement_repository: Arc<AnnouncementRepository>,
         _enchiridion_api: Arc<EnchiridionApi>,
     ) -> Self {
         DeviceService {
             _device_repository,
+            _announcement_repository,
             _enchiridion_api,
         }
     }
@@ -110,6 +113,7 @@ impl DeviceService {
     pub async fn unlink(&self) -> Result<(), UnlinkDeviceError> {
         self._enchiridion_api.unlink().await?;
         self._device_repository.delete().await?;
+        self._announcement_repository.reset().await?;
 
         Ok(())
     }
