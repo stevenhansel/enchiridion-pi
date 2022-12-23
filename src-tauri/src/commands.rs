@@ -114,8 +114,7 @@ pub async fn unlink(device_service: State<'_, Arc<DeviceService>>) -> Result<(),
         }
     }
 
-    Command::new("shutdown")
-        .args(["-P", "now"])
+    Command::new("reboot")
         .spawn()
         .unwrap();
 

@@ -73,14 +73,13 @@ const useCarousel = () => {
   useEffect(() => {
     if (isStart === false || isPaused === true) return;
 
-    let timeout: NodeJS.Timeout | undefined;
+    let timeout: number | undefined;
 
     const currentMediaType = mediaTypes[index];
     if (currentMediaType === MediaType.Image) {
       timeout = setTimeout(() => {
         setIndex((previousIndex) => {
           const updatedIndex = previousIndex + 1 === max ? 0 : previousIndex + 1;
-     
           return updatedIndex;
         });
       }, CAROUSEL_INTERVAL);

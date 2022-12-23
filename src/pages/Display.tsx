@@ -102,7 +102,6 @@ const Display = () => {
       pauseCarousel,
       continueCarousel,
       updateMax,
-      setDurations,
       onVideoEnd,
     },
   } = useContext<ApplicationContextType>(ApplicationContext);
@@ -231,21 +230,6 @@ const Display = () => {
       pauseCarousel();
     }
   }, [isNetworkConnected]);
-
-  useEffect(() => {
-    const announcement = announcements[index];
-
-    if (announcement && announcement.media_type === "video") {
-      const video = document.getElementById(
-        `video-${index}`
-      ) as HTMLVideoElement | null;
-      if (video === null) return;
-
-      video.pause();
-      video.currentTime = 0;
-      video.play();
-    }
-  }, [announcements, index]);
 
   return (
     <Box
