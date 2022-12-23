@@ -65,7 +65,7 @@
       "targets": "deb"
     },
     "security": {
-      "csp": "default-src 'self'; media-src 'self' 'unsafe-inline' asset:; style-src 'self' 'unsafe-inline'; img-src 'self' 'unsafe-inline' asset:;",
+      "csp": "default-src 'self' 'unsafe-inline'; media-src 'self' 'unsafe-inline' https:; style-src 'self' 'unsafe-inline'; img-src 'self' 'unsafe-inline' asset:;",
       "dangerousDisableAssetCspModification": true
     },
     "updater": {
