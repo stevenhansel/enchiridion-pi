@@ -231,6 +231,18 @@ const Display = () => {
     }
   }, [isNetworkConnected]);
 
+  useEffect(() => {
+    const announcement = announcements[index];
+    if (announcement && announcement.media_type === "video") {
+      const videoElement = document.getElementById(`video-${index}`) as HTMLVideoElement | null;
+      if (videoElement === null) return;
+
+      videoElement.pause();
+      videoElement.currentTime = 0;
+      videoElement.play();
+    }
+  }, [announcements, index])
+
   return (
     <Box
       sx={{
