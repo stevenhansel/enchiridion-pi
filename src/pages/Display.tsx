@@ -233,7 +233,7 @@ const Display = () => {
 
   useEffect(() => {
     const announcement = announcements[index];
-    if (announcement && announcement.media_type === "video") {
+    if (announcement && announcement.media_type[index] === "video") {
       const videoElement = document.getElementById(`video-${index}`) as HTMLVideoElement | null;
       if (videoElement === null) return;
 
@@ -241,7 +241,7 @@ const Display = () => {
       videoElement.currentTime = 0;
       videoElement.play();
     }
-  }, [announcements, index])
+  }, [])
 
   return (
     <Box

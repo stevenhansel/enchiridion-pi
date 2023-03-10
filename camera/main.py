@@ -98,7 +98,7 @@ class Runtime:
                     continue
 
 
-        xdotool = subprocess.Popen(("xdotool", "windowmove", pid, "0", "0"), stdout=subprocess.PIPE)
+        xdotool = subprocess.Popen(("xdotool", "windowmove", pid, "50", "100"), stdout=subprocess.PIPE)
         xdotool.wait()
 
         # gstreamer_cmd = '''gst-launch-1.0 ximagesrc xid={pid} ! videoscale ! 'video/x-raw,width={width},height={height}' ! videoconvert ! x264enc speed-preset=ultrafast tune=zerolatency byte-stream=true ! queue ! flvmux name=muxer ! rtmpsink location="rtmp://{srs_ip}/live/livestream/{device_id} live=1"'''.format(pid=camera_frame_pid, srs_ip=self.srs_ip, device_id=self.device_id, width=self.window_width, height=self.window_height)
