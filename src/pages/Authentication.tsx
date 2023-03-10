@@ -32,7 +32,6 @@ const Authentication = () => {
 
       const response = await tauri.link(accessKeyId, secretAccessKey);
       if (isTauriErrorObject<DeviceInformation>(response)) {
-	console.log(response);
         let { errorCode, messages } = response as TauriErrorObject;
         setError({ code: errorCode, message: messages[0] });
 

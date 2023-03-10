@@ -92,8 +92,6 @@ const useCarousel = () => {
     };
   }, [index, mediaTypes, isStart, isPaused]);
 
-  console.log(index);
-
   return {
     index,
     mediaTypes,
